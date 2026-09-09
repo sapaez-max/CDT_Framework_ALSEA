@@ -13,19 +13,32 @@ en `.env`, en el codigo ni en la documentacion del proyecto.
 
 ## Generacion manual de la sesion
 
-El portal DEV integra reCAPTCHA y el login completamente automatizado no logra
-emitir la solicitud de autenticacion. La sesion se genera con intervencion humana:
+El portal DEV rechaza el login cuando detecta un navegador controlado por
+Playwright. El comando inicia una instancia independiente de Google Chrome con un
+perfil temporal y Playwright se conecta solamente despues del acceso manual:
 
 1. Ejecutar `npm run auth:manual`.
-2. En la ventana de Chrome, escribir manualmente usuario y contrasena.
+2. En la ventana independiente de Chrome, escribir manualmente usuario y contrasena.
 3. Pulsar `Iniciar sesion` y completar cualquier validacion presentada por el portal.
 4. Esperar a que el navegador llegue a `/landing/` y muestre la cuenta esperada.
-5. El comando guarda la sesion en `.auth/admin.json` y cierra esa ventana.
-6. Ejecutar `npm run test:session` para comprobar la reutilizacion.
+5. Volver a la terminal y presionar Enter.
+6. El comando se conecta a Chrome, guarda la sesion en `.auth/admin.json`, cierra
+   esa instancia y elimina su perfil temporal.
+7. Ejecutar `npm run test:session` para comprobar la reutilizacion.
 
 El comando espera cinco minutos de forma predeterminada. El valor se controla con
 `MANUAL_AUTH_TIMEOUT_MS`. Si la sesion expira, se ejecuta nuevamente
 `npm run auth:manual`.
+
+La conexion local usa el puerto configurado en `AUTH_CDP_PORT` y el perfil indicado
+por `AUTH_CAPTURE_PROFILE_PATH`, que debe permanecer dentro de `.auth`. Si Chrome
+no se encuentra en una ruta habitual, se configura su ejecutable mediante
+`BROWSER_EXECUTABLE_PATH`.
+
+Antes de abrir el navegador, el setup valida la estructura y la expiracion de los
+tokens Cognito guardados. Una sesion vencida o con menos de un minuto de vigencia
+restante falla con un mensaje que solicita ejecutar `npm run auth:manual`. El margen
+se configura mediante `AUTH_MINIMUM_VALIDITY_MS`.
 
 `.auth/admin.json` contiene cookies y almacenamiento autenticado. Esta protegido
 por `.gitignore` y no debe copiarse, compartirse ni versionarse.
@@ -33,7 +46,7 @@ por `.gitignore` y no debe copiarse, compartirse ni versionarse.
 ## Ejecucion y reportes
 
 - `npm test`: ejecuta la suite con historial basico de corrida.
-- `npm run auth:manual`: abre Chrome y guarda la sesion después del acceso manual.
+- `npm run auth:manual`: abre Chrome independiente y captura la sesion despues del acceso manual.
 - `npm run test:session`: valida que la sesion guardada abre landing sin otro login.
 - `npm run test:smoke`: ejecuta las pruebas etiquetadas como smoke.
 - `npm run test:headed`: ejecuta la suite con navegador visible.

@@ -43,6 +43,7 @@ export const env = {
   authEnabled: booleanFromEnv('AUTH_ENABLED', false),
   authRole: process.env.AUTH_ROLE ?? 'admin',
   authStatePath: process.env.AUTH_STATE_PATH ?? '.auth/admin.json',
+  authMinimumValidityMs: numberFromEnv('AUTH_MINIMUM_VALIDITY_MS', 60_000),
 
   autoGoto: booleanFromEnv('E2E_AUTO_GOTO', true),
 
