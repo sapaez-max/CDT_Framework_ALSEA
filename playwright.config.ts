@@ -23,6 +23,7 @@ export default defineConfig({
     actionTimeout: env.actionTimeoutMs,
     navigationTimeout: env.navigationTimeoutMs,
     headless: env.headless,
+    channel: env.browserChannel,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: env.video,
@@ -32,8 +33,9 @@ export default defineConfig({
     ...getRoleProjectConfigs(),
     {
       name: 'setup',
+      testDir: './setup',
       testMatch: /.*\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], storageState: { cookies: [], origins: [] }, trace: 'off', screenshot: 'off', video: 'off' },
     },
   ],
 });

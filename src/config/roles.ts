@@ -1,40 +1,16 @@
-﻿import fs from 'fs';
 import path from 'path';
 import { devices, type Project } from '@playwright/test';
-import roles from './roles.json';
-
-type RoleConfig = {
-  id: string;
-  name: string;
-  projectName: string;
-  storageState?: string;
-  testMatch?: string[];
-  testIgnore?: string[];
-};
-
-export function getRoles(): RoleConfig[] {
-  return roles as RoleConfig[];
-}
-
-export function resolveStorageState(storageState?: string): string | undefined {
-  if (!storageState) return undefined;
-  const absolutePath = path.resolve(storageState);
-  return fs.existsSync(absolutePath) ? absolutePath : undefined;
-}
+import { env } from './env';
 
 export function getRoleProjectConfigs(): Project[] {
-  return getRoles().map((role) => ({
-    name: role.projectName,
-    testMatch: role.testMatch,
-    testIgnore: role.testIgnore,
+  return [{
+    name: 'chromium',
+    testMatch: '**/auth/session.spec.ts',
+    dependencies: env.authEnabled ? ['setup'] : [],
     use: {
       ...devices['Desktop Chrome'],
-      storageState: resolveStorageState(role.storageState),
+      storageState: env.authEnabled ? path.resolve(env.authStatePath) : undefined,
     },
-    metadata: {
-      roleId: role.id,
-      roleName: role.name,
-      storageState: role.storageState,
-    },
-  }));
+    metadata: { roleName: env.authRole },
+  }];
 }

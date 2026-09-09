@@ -1,27 +1,53 @@
-﻿# Framework base Playwright
+# Framework Playwright - Alsea Delivery
 
-Proyecto base independiente para automatizacion E2E con Playwright y TypeScript.
+## Preparacion
 
-## Configuracion inicial
+1. Ejecutar `npm ci` y `npx playwright install chromium` con Node 20 o superior.
+2. Copiar `.env.example` a `.env`.
+3. Configurar `APP_ACCOUNT_DISPLAY_NAME` con el correo que debe aparecer en landing.
+4. Ejecutar `npm run typecheck` y `npm run test:list`.
 
-1. Ejecuta `npm install`.
-2. Copia `.env.example` a `.env`.
-3. Configura `BASE_URL` y, si aplica autenticacion, `APP_USERNAME`, `APP_PASSWORD`, `AUTH_ENABLED=true` y los selectores `LOGIN_*`.
-4. Agrega Page Objects nuevos en `pages/` y specs en `tests/e2e/`.
+La URL, las rutas y los selectores se configuran por variables de entorno. El rol
+actual es Admin, el unico informado por el cliente. Las credenciales no se guardan
+en `.env`, en el codigo ni en la documentacion del proyecto.
 
-## Scripts
+## Generacion manual de la sesion
 
-- `npm test`: ejecuta Playwright con historial basico de corrida.
-- `npm run test:raw`: ejecuta Playwright directamente.
-- `npm run test:headed`: ejecuta con navegador visible.
-- `npm run test:ui`: abre Playwright UI.
-- `npm run test:smoke`: ejecuta pruebas etiquetadas con `@smoke`.
-- `npm run test:regression`: ejecuta pruebas etiquetadas con `@regression`.
+El portal DEV integra reCAPTCHA y el login completamente automatizado no logra
+emitir la solicitud de autenticacion. La sesion se genera con intervencion humana:
+
+1. Ejecutar `npm run auth:manual`.
+2. En la ventana de Chrome, escribir manualmente usuario y contrasena.
+3. Pulsar `Iniciar sesion` y completar cualquier validacion presentada por el portal.
+4. Esperar a que el navegador llegue a `/landing/` y muestre la cuenta esperada.
+5. El comando guarda la sesion en `.auth/admin.json` y cierra esa ventana.
+6. Ejecutar `npm run test:session` para comprobar la reutilizacion.
+
+El comando espera cinco minutos de forma predeterminada. El valor se controla con
+`MANUAL_AUTH_TIMEOUT_MS`. Si la sesion expira, se ejecuta nuevamente
+`npm run auth:manual`.
+
+`.auth/admin.json` contiene cookies y almacenamiento autenticado. Esta protegido
+por `.gitignore` y no debe copiarse, compartirse ni versionarse.
+
+## Ejecucion y reportes
+
+- `npm test`: ejecuta la suite con historial basico de corrida.
+- `npm run auth:manual`: abre Chrome y guarda la sesion después del acceso manual.
+- `npm run test:session`: valida que la sesion guardada abre landing sin otro login.
+- `npm run test:smoke`: ejecuta las pruebas etiquetadas como smoke.
+- `npm run test:headed`: ejecuta la suite con navegador visible.
 - `npm run report`: abre el reporte HTML.
 
-## Convenciones
+Los reportes se generan en `playwright-report`, `reports` y `artifacts`. Estas rutas
+tambien estan excluidas del repositorio.
 
-- Importa `test` y `expect` desde `@fixtures/base.fixture`.
-- Evita esperas fijas; usa assertions web-first.
-- Mantiene URLs, credenciales, contexto y rutas en `.env` o configuracion, no en specs.
-- Mantiene Page Objects de negocio separados por modulo de la nueva aplicacion.
+## Alcance actual
+
+La linea base contiene configuracion DEV, sesion Admin manual reutilizable,
+fixtures, diagnostico de fallos y reporting. Los CP1-CP48 estan documentados y
+pendientes de implementacion.
+
+Organizar Page Objects por pantallas y pruebas por escenarios o flujos. Los specs
+deben importar `test` y `expect` desde `@fixtures/base.fixture`, utilizar assertions
+web-first y mantener URLs, contexto y selectores fuera de los casos de prueba.

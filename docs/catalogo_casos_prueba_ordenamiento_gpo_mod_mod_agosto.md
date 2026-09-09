@@ -3,7 +3,7 @@
 ---
 
 ## Estandar aplicado
-Este catalogo se adapto al formato existente en `docs/catalogo_casos_prueba_demo.md`: agrupacion por `Escenario`, bloque `Caso de prueba`, bandera `Implementado`, y secciones de titulo, descripcion, precondiciones, datos, pasos y resultado esperado.
+Este catalogo conserva una estructura uniforme por escenario y caso de prueba, con bandera `Implementado` y secciones de titulo, descripcion, precondiciones, datos, pasos y resultado esperado.
 
 Tambien se consideraron las convenciones del framework documentadas en `README.md` y `AGENTS.md`: los escenarios documentales se mantienen en `docs/`, la automatizacion futura debe vivir en `tests/e2e/`, y las specs deberan importar `test` y `expect` desde `@fixtures/base.fixture` sin esperas fijas.
 
@@ -24,45 +24,12 @@ Tambien se consideraron las convenciones del framework documentadas en `README.m
 - Prioridad: Alta, Media, Baja
 - Severidad: Alta, Media, Baja
 
-### Referencia de secciones detectada en Hoja1
-- Bitácora de Horneo
-- Cierre de dia
-- Indicadores
-- Decision Center
-- Gestion de Servicios
-- Mesa de Servicios
-- Evaluame
-- Mensajeria
-- Okta
-- Outlook
-- Workplace
-- Teams
-- Enlace
-- HUB del Gerente
-- Hub-ADN Alsea
-- Hub-EMI
-- Hub-Delivery Alsea
-- Hub-Alsea College
-- Hub-Carpeta Legal
-- Hub-Kronos
-- Hub-Medallia
-- Hub-Oracle
-- Hub-HCM
-- Horarios
-- Asistencias
-- CAEA
-- ICA Web
-- Portal SMART
-- HME Cloud
-- Inventory App
-- Terminales bancarias
-
 ---
 
 ## Escenario: OrdenamientoGpoMod&Mod 2.0 - Starbucks
 **Descripcion:** Validar el flujo funcional de descarga, edicion, carga, publicacion y verificacion de ordenamiento de grupos modificadores y modificadores para Starbucks.
 
-**Modulo/Bloque:** Menú > Administración / Visor CORE
+**Flujo/Pantalla:** Menú > Administración / Visor CORE
 **Hoja origen:** `SBX`
 **Casos incluidos:** 12
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@starbucks`
@@ -574,7 +541,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ## Escenario: OrdenamientoGpoMod&Mod 2.0 - Burger King
 **Descripcion:** Validar el flujo funcional de descarga, edicion, carga, publicacion y verificacion de ordenamiento de grupos modificadores y modificadores para Burger King.
 
-**Modulo/Bloque:** Menú > Administración / Visor CORE
+**Flujo/Pantalla:** Menú > Administración / Visor CORE
 **Hoja origen:** `BK`
 **Casos incluidos:** 12
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@burger-king`
@@ -1089,7 +1056,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ## Escenario: OrdenamientoGpoMod&Mod 2.0 - VIPS
 **Descripcion:** Validar el flujo funcional de descarga, edicion, carga, publicacion y verificacion de ordenamiento de grupos modificadores y modificadores para VIPS.
 
-**Modulo/Bloque:** Menú > Administración / Visor CORE
+**Flujo/Pantalla:** Menú > Administración / Visor CORE
 **Hoja origen:** `VIPS`
 **Casos incluidos:** 12
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@vips`
@@ -1594,7 +1561,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ## Escenario: OrdenamientoGpoMod&Mod 2.0 - Chili's
 **Descripcion:** Validar el flujo funcional de descarga, edicion, carga, publicacion y verificacion de ordenamiento de grupos modificadores y modificadores para Chili's.
 
-**Modulo/Bloque:** Menú > Administración / Visor CORE
+**Flujo/Pantalla:** Menú > Administración / Visor CORE
 **Hoja origen:** `Chili´s`
 **Casos incluidos:** 12
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@chilis`

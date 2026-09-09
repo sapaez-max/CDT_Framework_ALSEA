@@ -30,41 +30,24 @@ function videoFromEnv(): 'off' | 'on' | 'retain-on-failure' | 'on-first-retry' {
   return 'retain-on-failure';
 }
 
-function firstDefined(...values: Array<string | undefined>): string {
-  return values.find((value) => value !== undefined && value !== '') ?? '';
-}
-
 export const env = {
-  baseUrl: process.env.BASE_URL ?? 'https://gl-woe.appdevalsea.com',
+  baseUrl: process.env.BASE_URL ?? '',
 
   appEnv: process.env.APP_ENV ?? 'local',
 
-  username: firstDefined(
-    process.env.APP_USERNAME,
-    process.env.TEST_USERNAME
-  ),
-
-  password: firstDefined(
-    process.env.APP_PASSWORD,
-    process.env.TEST_PASSWORD
-  ),
-
-  accountDisplayName: firstDefined(
-    process.env.APP_ACCOUNT_DISPLAY_NAME,
-    process.env.TEST_ACCOUNT_DISPLAY_NAME,
-    process.env.APP_USERNAME,
-    process.env.TEST_USERNAME
-  ),
+  accountDisplayName: process.env.APP_ACCOUNT_DISPLAY_NAME ?? '',
 
   company: process.env.APP_COMPANY ?? '',
   context: process.env.APP_CONTEXT ?? '',
 
   authEnabled: booleanFromEnv('AUTH_ENABLED', false),
-  authRole: process.env.AUTH_ROLE ?? 'default',
+  authRole: process.env.AUTH_ROLE ?? 'admin',
+  authStatePath: process.env.AUTH_STATE_PATH ?? '.auth/admin.json',
 
   autoGoto: booleanFromEnv('E2E_AUTO_GOTO', true),
 
   headless: booleanFromEnv('HEADLESS', true),
+  browserChannel: process.env.BROWSER_CHANNEL || undefined,
   video: videoFromEnv(),
   workers: numberFromEnv('WORKERS', 1),
   retries: numberFromEnv('RETRIES', 0),
@@ -72,9 +55,11 @@ export const env = {
   actionTimeoutMs: numberFromEnv('ACTION_TIMEOUT_MS', 10_000),
   expectTimeoutMs: numberFromEnv('EXPECT_TIMEOUT_MS', 15_000),
   navigationTimeoutMs: numberFromEnv('NAVIGATION_TIMEOUT_MS', 30_000),
+  manualAuthTimeoutMs: numberFromEnv('MANUAL_AUTH_TIMEOUT_MS', 300_000),
 
   login: {
-    path: process.env.LOGIN_PATH ?? '/Login',
+    path: process.env.LOGIN_PATH ?? '/login/',
+    landingPath: process.env.LANDING_PATH ?? '/landing/',
 
     usernameSelector:
       process.env.LOGIN_USERNAME_SELECTOR ?? '',
@@ -93,23 +78,15 @@ export const env = {
   },
 } as const;
 
-export function validateRequiredEnv(
-  options: { requireAuth?: boolean } = {}
-): void {
+export function validateRequiredEnv(): void {
   const missing: string[] = [];
 
   if (!env.baseUrl) {
     missing.push('BASE_URL');
   }
 
-  if (options.requireAuth || env.authEnabled) {
-    if (!env.username) {
-      missing.push('TEST_USERNAME o APP_USERNAME');
-    }
-
-    if (!env.password) {
-      missing.push('TEST_PASSWORD o APP_PASSWORD');
-    }
+  if (!env.accountDisplayName) {
+    missing.push('APP_ACCOUNT_DISPLAY_NAME');
   }
 
   if (missing.length > 0) {
