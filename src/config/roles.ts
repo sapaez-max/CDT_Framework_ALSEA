@@ -5,7 +5,7 @@ import { env } from './env';
 export function getRoleProjectConfigs(): Project[] {
   return [{
     name: 'chromium',
-    testMatch: '**/auth/session.spec.ts',
+    testMatch: '**/*.spec.ts',
     dependencies: env.authEnabled ? ['setup'] : [],
     use: {
       ...devices['Desktop Chrome'],
