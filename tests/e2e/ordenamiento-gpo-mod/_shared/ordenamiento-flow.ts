@@ -17,7 +17,7 @@ export async function ejecutarDescargaPlantilla(page: Page, caseData: TemplateDo
   }
 }
 
-async function goToLanding(page: Page): Promise<void> {
+export async function goToLanding(page: Page): Promise<void> {
   await page.goto(env.login.landingPath, { waitUntil: 'commit' }).catch((error: Error) => {
     if (!/ERR_ABORTED/i.test(error.message)) {
       throw error;

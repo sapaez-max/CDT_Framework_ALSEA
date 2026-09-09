@@ -2,6 +2,13 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '@pages/base/BasePage';
 import { downloadPath } from '@utils/downloads';
 
+type VisibleOptionData = {
+  index: number;
+  text: string;
+  title: string;
+  ariaLabel: string;
+};
+
 export type TemplateDownloadFormData = {
   country: string | string[];
   brand: string | string[];
@@ -9,6 +16,16 @@ export type TemplateDownloadFormData = {
   childBranch?: string | string[];
   menuType: string | string[];
   childMenuType?: string | string[];
+  expectedMessage: RegExp;
+};
+
+export type MenuLoadFormData = {
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+  description: string;
   expectedMessage: RegExp;
 };
 
@@ -59,6 +76,34 @@ export class MenuAdministrationPage extends BasePage {
 
     const download = await downloadPromise;
     return download ? downloadPath(download) : '';
+  }
+
+  async openMenuLoad(): Promise<void> {
+    await this.openApplicationLauncher();
+    await this.openMenuSection();
+    await this.openAdministrationPage();
+    await this.openLoadMenuPage();
+  }
+
+  async loadMenu(caseData: MenuLoadFormData): Promise<void> {
+    await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
+    await this.selectField(/Marca|Marcas/i, caseData.brand);
+    await this.selectField(/Sucursal|Sucursales/i, caseData.branch);
+    await this.selectField(/Agregador|Agregadores/i, caseData.aggregator);
+    await this.selectField(/Tipo de men[uú]/i, caseData.menuType);
+
+    const description = this.page.locator('#description').or(this.page.getByPlaceholder(/Ingresa una descripci[oó]n/i)).first();
+    await expect(description, 'Debe existir el campo de descripcion para la carga').toBeVisible();
+    await description.fill(caseData.description);
+
+    const button = this.page.getByRole('button', { name: /Cargar Men[uú]/i }).first();
+    await expect(button, 'Debe estar disponible el boton Cargar Menu').toBeEnabled();
+    await button.click();
+
+    await this.expectVisibleNotification(
+      caseData.expectedMessage,
+      'El portal debe confirmar que la carga del menu fue iniciada correctamente',
+    );
   }
 
   private async openApplicationLauncher(): Promise<void> {
@@ -122,6 +167,18 @@ export class MenuAdministrationPage extends BasePage {
     ).toBeVisible();
   }
 
+  private async openLoadMenuPage(): Promise<void> {
+    const loadMenuLink = this.page.getByRole('link', { name: /Carga de Men[uú]|Cargar Men[uú]/i }).first();
+
+    await expect(loadMenuLink, 'Debe existir el link Carga de Menu en Administracion de Menu').toBeVisible();
+    await loadMenuLink.click();
+
+    await expect(
+      this.page.getByRole('button', { name: /Cargar Men[uú]/i }).first(),
+      'Debe mostrarse el formulario de carga de menu',
+    ).toBeVisible();
+  }
+
   private async clickNavigationItem(name: RegExp): Promise<void> {
     const item = this.page
       .getByRole('button', { name })
@@ -149,13 +206,7 @@ export class MenuAdministrationPage extends BasePage {
       return;
     }
 
-    const option = await this.findAutocompleteOption(field, values, label);
-    await option.click();
-    await expect
-      .poll(() => this.fieldContainsValue(field, values), {
-        message: `El selector ${label} debe mostrar el valor seleccionado`,
-      })
-      .toBe(true);
+    await this.selectAutocompleteOption(field, values, label);
   }
 
   private field(label: RegExp): Locator {
@@ -182,6 +233,10 @@ export class MenuAdministrationPage extends BasePage {
       return this.antSelectByInputId('branch');
     }
 
+    if (this.matchesLabel(label, ['Agregador', 'Agregadores'])) {
+      return this.antSelectByInputId('aggregator');
+    }
+
     if (this.matchesLabel(label, ['Tipo de menu', 'Tipo de menú', 'Tipo menu', 'Tipo menú'])) {
       return this.antSelectByInputId('menuType');
     }
@@ -205,6 +260,33 @@ export class MenuAdministrationPage extends BasePage {
       .catch(() => false);
   }
 
+  private async selectAutocompleteOption(field: Locator, values: string[], label: RegExp): Promise<void> {
+    const attempts = 3;
+    let lastRetryableError: Error | undefined;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const option = await this.findAutocompleteOption(field, values, label);
+        await expect(option, `Debe mantenerse visible la opcion seleccionable para ${label}`).toBeVisible();
+        await option.click();
+        await expect
+          .poll(() => this.fieldContainsValue(field, values), {
+            message: `El selector ${label} debe mostrar el valor seleccionado`,
+          })
+          .toBe(true);
+        return;
+      } catch (error) {
+        if (!isRetryableAutocompleteError(error) || attempt === attempts) {
+          throw error;
+        }
+
+        lastRetryableError = error as Error;
+      }
+    }
+
+    throw new Error(`No fue posible seleccionar ${values.join(', ')} en ${label} despues de ${attempts} intentos. ${lastRetryableError?.message ?? ''}`);
+  }
+
   private async findAutocompleteOption(field: Locator, values: string[], label: RegExp): Promise<Locator> {
     const failures: string[] = [];
 
@@ -213,6 +295,7 @@ export class MenuAdministrationPage extends BasePage {
         await field.click();
         await this.typeIntoCombobox(field, searchValue);
         await expect(this.visibleDropdown(), `Debe abrirse el dropdown filtrado de ${label}`).toBeVisible();
+        await expect(this.visibleAntOptions().or(this.visibleRoleOptions()), `Debe existir al menos una opcion visible para ${label}`).not.toHaveCount(0);
 
         const matched = await this.matchVisibleOption(value);
         if (matched.status === 'found') {
@@ -223,7 +306,7 @@ export class MenuAdministrationPage extends BasePage {
       }
     }
 
-    throw new Error(`No se encontro una opcion valida para ${label}. Valores buscados: ${values.join(', ')}. ${failures.join(' | ')}`);
+    throw new NonRetryableAutocompleteError(`No se encontro una opcion valida para ${label}. Valores buscados: ${values.join(', ')}. ${failures.join(' | ')}`);
   }
 
   private async typeIntoCombobox(field: Locator, value: string): Promise<void> {
@@ -242,59 +325,82 @@ export class MenuAdministrationPage extends BasePage {
     | { status: 'found'; option: Locator }
     | { status: 'missing' | 'ambiguous'; message: string }
   > {
-    const optionTexts = await this.visibleAntOptions().evaluateAll((options) =>
+    const optionTexts = await this.visibleOptionsForMatching().evaluateAll((options) =>
       options.map((option, index) => ({
         index,
         text: (option.textContent || '').trim(),
         title: option.getAttribute('title') || '',
+        ariaLabel: option.getAttribute('aria-label') || '',
       })),
     );
     const normalizedValue = normalizeForComparison(value);
     const exact = optionTexts.filter((option) =>
-      [option.text, option.title].some((text) => normalizeForComparison(text) === normalizedValue),
+      optionValues(option).some((text) => normalizeForComparison(text) === normalizedValue),
     );
 
-    if (exact.length) {
-      return { status: 'found', option: this.visibleAntOptions().nth(exact[0].index) };
+    if (exact.length === 1) {
+      return { status: 'found', option: this.locatorForExactOption(exact[0]) };
+    }
+
+    if (exact.length > 1) {
+      return {
+        status: 'ambiguous',
+        message: `El valor "${value}" coincide exactamente con multiples opciones: ${exact.map(optionDisplayName).join(', ')}`,
+      };
+    }
+
+    const trailingCode = optionTexts.filter((option) =>
+      optionValues(option).some((text) => matchesExactTrailingCode(text, value)),
+    );
+
+    if (trailingCode.length === 1) {
+      return { status: 'found', option: this.locatorForExactOption(trailingCode[0]) };
+    }
+
+    if (trailingCode.length > 1) {
+      return {
+        status: 'ambiguous',
+        message: `El valor "${value}" coincide con multiples codigos exactos al final: ${trailingCode.map(optionDisplayName).join(', ')}`,
+      };
     }
 
     const termMatches = this.matchOptionsByTerms(optionTexts, value);
     if (termMatches.length === 1) {
-      return { status: 'found', option: this.visibleAntOptions().nth(termMatches[0].index) };
+      return { status: 'found', option: this.locatorForExactOption(termMatches[0]) };
     }
 
     if (termMatches.length > 1) {
       return {
         status: 'ambiguous',
-        message: `El valor "${value}" coincide con multiples opciones por terminos: ${termMatches.map((option) => option.text || option.title).join(', ')}`,
+        message: `El valor "${value}" coincide con multiples opciones por terminos: ${termMatches.map(optionDisplayName).join(', ')}`,
       };
     }
 
     const partial = optionTexts.filter((option) =>
-      [option.text, option.title].some((text) => normalizeForComparison(text).includes(normalizedValue)),
+      optionValues(option).some((text) => normalizeForComparison(text).includes(normalizedValue)),
     );
 
     if (partial.length === 1) {
-      return { status: 'found', option: this.visibleAntOptions().nth(partial[0].index) };
+      return { status: 'found', option: this.locatorForExactOption(partial[0]) };
     }
 
     if (partial.length > 1) {
       return {
         status: 'ambiguous',
-        message: `El valor "${value}" coincide con multiples opciones: ${partial.map((option) => option.text || option.title).join(', ')}`,
+        message: `El valor "${value}" coincide con multiples opciones: ${partial.map(optionDisplayName).join(', ')}`,
       };
     }
 
     return {
       status: 'missing',
-      message: `El valor "${value}" no coincide con opciones visibles: ${optionTexts.map((option) => option.text || option.title).join(', ') || 'sin opciones'}`,
+      message: `El valor "${value}" no coincide con opciones visibles: ${optionTexts.map(optionDisplayName).join(', ') || 'sin opciones'}`,
     };
   }
 
   private matchOptionsByTerms(
-    options: Array<{ index: number; text: string; title: string }>,
+    options: VisibleOptionData[],
     value: string,
-  ): Array<{ index: number; text: string; title: string }> {
+  ): VisibleOptionData[] {
     const terms = this.significantTerms(value);
 
     if (terms.length < 2) {
@@ -302,7 +408,7 @@ export class MenuAdministrationPage extends BasePage {
     }
 
     return options.filter((option) =>
-      [option.text, option.title].some((text) => {
+      optionValues(option).some((text) => {
         const normalizedText = normalizeForComparison(text);
         const textTokens = normalizedText.split(/\s+/);
 
@@ -358,12 +464,46 @@ export class MenuAdministrationPage extends BasePage {
     return this.page.locator('.ant-select-dropdown:visible .ant-select-item-option');
   }
 
+  private visibleRoleOptions(): Locator {
+    return this.page.locator('[role="listbox"]:visible [role="option"]:visible');
+  }
+
+  private visibleOptionsForMatching(): Locator {
+    return this.visibleAntOptions().or(this.visibleRoleOptions());
+  }
+
+  private locatorForExactOption(option: VisibleOptionData): Locator {
+    const candidates = optionValues(option).filter(Boolean);
+    const visibleOptions = this.visibleOptionsForMatching();
+    const locators = candidates.map((candidate) => {
+      const pattern = exactTextPattern(candidate);
+
+      return visibleOptions
+        .filter({ hasText: pattern })
+        .or(this.page.locator(`.ant-select-dropdown:visible .ant-select-item-option[title=${cssString(candidate)}]`))
+        .or(this.page.locator(`[role="listbox"]:visible [role="option"][aria-label=${cssString(candidate)}]:visible`));
+    });
+
+    return locators.reduce((locator, next) => locator.or(next));
+  }
+
   private successMessage(pattern: RegExp): Locator {
     return this.page
       .getByRole('alert')
       .filter({ hasText: pattern })
       .or(this.page.getByText(pattern))
       .first();
+  }
+
+  private async expectVisibleNotification(message: RegExp, assertionMessage: string): Promise<void> {
+    const notification = this.visibleNotification(message);
+
+    await expect(notification, assertionMessage).toHaveCount(1);
+    await expect(notification, assertionMessage).toBeVisible();
+  }
+
+  private visibleNotification(message: RegExp): Locator {
+    return this.page.locator('[role="alert"]:visible').filter({ hasText: message });
   }
 
   private rootApplicationMenu(): Locator {
@@ -383,6 +523,34 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function exactTextPattern(value: string): RegExp {
+  return new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, 'i');
+}
+
+function cssString(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function optionValues(option: VisibleOptionData): string[] {
+  return [option.text, option.title, option.ariaLabel].filter(Boolean);
+}
+
+function optionDisplayName(option: VisibleOptionData): string {
+  return option.text || option.title || option.ariaLabel;
+}
+
+function matchesExactTrailingCode(optionText: string, value: string): boolean {
+  const normalizedValue = normalizeForComparison(value);
+  const normalizedText = normalizeForComparison(optionText);
+  const lastDashIndex = normalizedText.lastIndexOf('-');
+
+  if (lastDashIndex === -1) {
+    return false;
+  }
+
+  return normalizedText.slice(lastDashIndex + 1).trim() === normalizedValue;
+}
+
 function normalizeForComparison(value: string): string {
   return value
     .normalize('NFD')
@@ -390,4 +558,21 @@ function normalizeForComparison(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
+}
+
+class NonRetryableAutocompleteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NonRetryableAutocompleteError';
+  }
+}
+
+function isRetryableAutocompleteError(error: unknown): boolean {
+  if (error instanceof NonRetryableAutocompleteError) {
+    return false;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+
+  return /Timeout|not visible|detached|closed|not attached|Element is not attached|intercepts pointer events|Target page, context or browser has been closed/i.test(message);
 }

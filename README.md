@@ -55,6 +55,15 @@ por `.gitignore` y no debe copiarse, compartirse ni versionarse.
 Los reportes se generan en `playwright-report`, `reports` y `artifacts`. Estas rutas
 tambien estan excluidas del repositorio.
 
+## Dropdowns dinamicos
+
+Los dropdowns y autocompletes de Ant Design deben operarse mediante helpers o Page
+Objects compartidos. No se deben usar indices (`nth`, `first`, `last`) para
+seleccionar opciones dinamicas, porque el overlay puede re-renderizarse entre la
+lectura y el click. La seleccion debe reconstruir el locator por contenido estable
+justo antes de interactuar, validar el valor aplicado y reintentar solo ante fallos
+tecnicos de overlay/renderizado, sin ocultar datos inexistentes ni ambiguedades.
+
 ## Alcance actual
 
 La linea base contiene configuracion DEV, sesion Admin manual reutilizable,
