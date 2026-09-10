@@ -28,6 +28,7 @@
     "@playwright/test": "^1.60.0",
     "@types/dotenv": "^6.1.1",
     "@types/node": "^25.0.9",
+    "googleapis": "176.0.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {

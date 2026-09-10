@@ -1,6 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '@pages/base/BasePage';
-import { downloadPath } from '@utils/downloads';
 
 type VisibleOptionData = {
   index: number;
@@ -45,7 +44,7 @@ export class MenuAdministrationPage extends BasePage {
     ).toBeVisible();
   }
 
-  async downloadTemplate(caseData: TemplateDownloadFormData): Promise<string> {
+  async prepareTemplateDownload(caseData: TemplateDownloadFormData): Promise<void> {
     await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
     await this.selectField(/Marca|Marcas/i, caseData.brand);
 
@@ -62,20 +61,17 @@ export class MenuAdministrationPage extends BasePage {
     if (caseData.childMenuType) {
       await this.selectField(/Tipo men[uú]/i, caseData.childMenuType);
     }
+  }
 
+  async requestTemplateDownload(expectedMessage: RegExp): Promise<void> {
     const button = this.page.getByRole('button', { name: /Descargar plantilla/i }).first();
     await expect(button, 'Debe estar disponible el boton Descargar plantilla').toBeEnabled();
-
-    const downloadPromise = this.page.waitForEvent('download', { timeout: 5_000 }).catch(() => null);
     await button.click();
 
     await expect(
-      this.successMessage(caseData.expectedMessage),
+      this.successMessage(expectedMessage),
       'El portal debe confirmar la solicitud y el envio de la plantilla por correo',
     ).toBeVisible();
-
-    const download = await downloadPromise;
-    return download ? downloadPath(download) : '';
   }
 
   async openMenuLoad(): Promise<void> {

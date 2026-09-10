@@ -58,6 +58,18 @@ export const env = {
   navigationTimeoutMs: numberFromEnv('NAVIGATION_TIMEOUT_MS', 30_000),
   manualAuthTimeoutMs: numberFromEnv('MANUAL_AUTH_TIMEOUT_MS', 300_000),
 
+  gmail: {
+    enabled: booleanFromEnv('GMAIL_ENABLED', false),
+    account: process.env.GMAIL_ACCOUNT ?? '',
+    userId: process.env.GMAIL_USER_ID ?? 'me',
+    credentialsPath: process.env.GOOGLE_CREDENTIALS_PATH ?? '',
+    tokenPath: process.env.GOOGLE_TOKEN_PATH ?? '',
+    expectedFrom: process.env.GMAIL_EXPECTED_FROM ?? '',
+    expectedSubject: process.env.GMAIL_EXPECTED_SUBJECT ?? '',
+    pollTimeoutMs: numberFromEnv('GMAIL_POLL_TIMEOUT_MS', 300_000),
+    pollIntervalMs: numberFromEnv('GMAIL_POLL_INTERVAL_MS', 5_000),
+  },
+
   login: {
     path: process.env.LOGIN_PATH ?? '/login/',
     landingPath: process.env.LANDING_PATH ?? '/landing/',
@@ -94,5 +106,24 @@ export function validateRequiredEnv(): void {
     throw new Error(
       `Configura las variables requeridas antes de ejecutar: ${missing.join(', ')}`
     );
+  }
+}
+
+export function validateGmailEnv(): void {
+  if (!env.gmail.enabled) {
+    throw new Error('GMAIL_ENABLED=false; habilita Gmail para validar la recepcion de plantillas.');
+  }
+
+  const required = [
+    ['GMAIL_ACCOUNT', env.gmail.account],
+    ['GOOGLE_CREDENTIALS_PATH', env.gmail.credentialsPath],
+    ['GOOGLE_TOKEN_PATH', env.gmail.tokenPath],
+    ['GMAIL_EXPECTED_FROM', env.gmail.expectedFrom],
+    ['GMAIL_EXPECTED_SUBJECT', env.gmail.expectedSubject],
+  ];
+  const missing = required.filter(([, value]) => !value).map(([name]) => name);
+
+  if (missing.length > 0) {
+    throw new Error(`Configura las variables de Gmail requeridas: ${missing.join(', ')}`);
   }
 }

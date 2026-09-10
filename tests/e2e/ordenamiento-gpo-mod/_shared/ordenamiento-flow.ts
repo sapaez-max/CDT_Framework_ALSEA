@@ -1,20 +1,44 @@
-import { expect, type Page } from '@fixtures/base.fixture';
+import { expect, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { env } from '@config/env';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
+import type { GmailClient } from '@src/integrations/google/gmail-client';
 import type { TemplateDownloadCase } from './casos.data';
 
-export async function ejecutarDescargaPlantilla(page: Page, caseData: TemplateDownloadCase): Promise<void> {
+export async function ejecutarDescargaPlantilla(
+  page: Page,
+  gmailClient: GmailClient,
+  testInfo: TestInfo,
+  caseData: TemplateDownloadCase,
+): Promise<void> {
   await goToLanding(page);
   await new LoginPage(page).expectAuthenticated();
 
   const menuPage = new MenuAdministrationPage(page);
   await menuPage.openTemplateDownload();
-  const downloadedPath = await menuPage.downloadTemplate(caseData);
+  await menuPage.prepareTemplateDownload(caseData);
 
-  if (downloadedPath) {
-    expect(downloadedPath, 'La descarga directa del navegador debe generar un archivo Excel').toMatch(/\.xlsx?$/i);
-  }
+  const baselineIds = await gmailClient.captureTemplateEmailBaseline();
+  await menuPage.requestTemplateDownload(caseData.expectedMessage);
+  const email = await gmailClient.waitForTemplateEmail(baselineIds, {
+    caseId: caseData.id,
+    country: caseData.country,
+    brand: caseData.brand,
+    branch: caseData.baseBranch ?? [],
+    menuType: caseData.menuType,
+  });
+
+  expect(email.savedPath, 'El adjunto de Gmail debe guardarse como archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(`correo-${caseData.id}`, {
+    body: Buffer.from(JSON.stringify({
+      receivedAt: email.receivedAt,
+      from: email.from,
+      subject: email.subject,
+      attachmentName: email.attachmentName,
+      savedPath: email.savedPath,
+    }, null, 2)),
+    contentType: 'application/json',
+  });
 }
 
 export async function goToLanding(page: Page): Promise<void> {

@@ -45,12 +45,30 @@ por `.gitignore` y no debe copiarse, compartirse ni versionarse.
 
 ## Ejecucion y reportes
 
+Los casos CP1, CP13, CP25 y CP37 validan que Gmail reciba un correo nuevo de
+`no-reply@grupoalsea.com.mx` con asunto `Descarga de la plantilla Desarrollo`.
+El cuerpo debe contener el pais, la marca, la sucursal y el tipo de menu
+seleccionados. El primer adjunto `.xls` o `.xlsx` se guarda en
+`artifacts/downloads/<CP>/` sin inspeccionar su contenido. La espera maxima se
+configura mediante `GMAIL_POLL_TIMEOUT_MS` y es de cinco minutos por defecto.
+
+Las rutas de `credentials.json` y `token.json` se configuran en `.env` mediante
+`GOOGLE_CREDENTIALS_PATH` y `GOOGLE_TOKEN_PATH`. Estos archivos contienen secretos
+y no deben copiarse al repositorio ni incluirse en reportes.
+
 - `npm test`: ejecuta la suite con historial basico de corrida.
 - `npm run auth:manual`: abre Chrome independiente y captura la sesion despues del acceso manual.
 - `npm run test:session`: valida que la sesion guardada abre landing sin otro login.
 - `npm run test:smoke`: ejecuta las pruebas etiquetadas como smoke.
 - `npm run test:headed`: ejecuta la suite con navegador visible.
 - `npm run report`: abre el reporte HTML.
+
+Los casos tambien se pueden filtrar por marca:
+
+- `npx playwright test --grep "@starbucks"`
+- `npx playwright test --grep "@burger-king"`
+- `npx playwright test --grep "@vips"`
+- `npx playwright test --grep "@chilis"`
 
 Los reportes se generan en `playwright-report`, `reports` y `artifacts`. Estas rutas
 tambien estan excluidas del repositorio.

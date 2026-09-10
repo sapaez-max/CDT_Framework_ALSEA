@@ -1,7 +1,10 @@
 import type { MenuLoadFormData, TemplateDownloadFormData } from '@pages/menu/MenuAdministrationPage';
 
+export type BrandTag = '@starbucks' | '@burger-king' | '@vips' | '@chilis';
+
 export type TemplateDownloadCase = TemplateDownloadFormData & {
   id: 'CP1' | 'CP13' | 'CP25' | 'CP37';
+  brandTag: BrandTag;
   title: string;
   requirement: string;
   sourceSheet: string;
@@ -11,6 +14,7 @@ export type TemplateDownloadCase = TemplateDownloadFormData & {
 
 export type MenuLoadCase = MenuLoadFormData & {
   id: 'CP4' | 'CP16' | 'CP28' | 'CP40';
+  brandTag: BrandTag;
   title: string;
   requirement: string;
   sourceSheet: string;
@@ -23,6 +27,7 @@ const expectedMenuLoadMessage = /El men[uú]\s+se est[aá]\s+cargando correctame
 
 export const cp1Data: TemplateDownloadCase = {
   id: 'CP1',
+  brandTag: '@starbucks',
   title: 'Descarga de plantilla para registro de filtros - Starbucks',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'SBX',
@@ -37,6 +42,7 @@ export const cp1Data: TemplateDownloadCase = {
 
 export const cp13Data: TemplateDownloadCase = {
   id: 'CP13',
+  brandTag: '@burger-king',
   title: 'Descarga de plantilla para registro de filtros - Burger King',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'BK',
@@ -51,6 +57,7 @@ export const cp13Data: TemplateDownloadCase = {
 
 export const cp25Data: TemplateDownloadCase = {
   id: 'CP25',
+  brandTag: '@vips',
   title: 'Descarga de plantilla para registro de filtros - VIPS',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'VIPS',
@@ -65,6 +72,7 @@ export const cp25Data: TemplateDownloadCase = {
 
 export const cp37Data: TemplateDownloadCase = {
   id: 'CP37',
+  brandTag: '@chilis',
   title: "Descarga de plantilla para registro de filtros - Chili's",
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'Chilis',
@@ -79,6 +87,7 @@ export const cp37Data: TemplateDownloadCase = {
 
 export const cp4Data: MenuLoadCase = {
   id: 'CP4',
+  brandTag: '@starbucks',
   title: 'Carga exitosa de un nuevo menú para Starbucks en el agregador seleccionado',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'SBX',
@@ -94,6 +103,7 @@ export const cp4Data: MenuLoadCase = {
 
 export const cp16Data: MenuLoadCase = {
   id: 'CP16',
+  brandTag: '@burger-king',
   title: 'Carga exitosa de un nuevo menú para Burger King en el agregador seleccionado',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'BK',
@@ -109,6 +119,7 @@ export const cp16Data: MenuLoadCase = {
 
 export const cp28Data: MenuLoadCase = {
   id: 'CP28',
+  brandTag: '@vips',
   title: 'Carga exitosa de un nuevo menú para Vips en Uber Eats',
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'VIPS',
@@ -124,6 +135,7 @@ export const cp28Data: MenuLoadCase = {
 
 export const cp40Data: MenuLoadCase = {
   id: 'CP40',
+  brandTag: '@chilis',
   title: "Carga exitosa de un nuevo menú para Chili's en el agregador seleccionado",
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'Chilis',
