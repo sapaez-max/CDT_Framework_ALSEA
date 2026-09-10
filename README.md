@@ -52,6 +52,27 @@ seleccionados. El primer adjunto `.xls` o `.xlsx` se guarda en
 `artifacts/downloads/<CP>/` sin inspeccionar su contenido. La espera maxima se
 configura mediante `GMAIL_POLL_TIMEOUT_MS` y es de cinco minutos por defecto.
 
+Los casos CP2, CP14, CP26 y CP38 toman respectivamente las plantillas de CP1,
+CP13, CP25 y CP37. Cada caso valida que `Items`, `GrupoModificador` y
+`Modificadores` tengan datos relacionados, selecciona el primer agregador
+configurado disponible y edita una copia sin alterar la descarga original. La
+copia se guarda en `artifacts/edited/<CP>/`. El reporte incluye la plantilla
+editada y anotaciones con el producto, grupo, modificadores, agregador, celdas y
+valores cambiados. La validacion de horarios de Vigencia queda fuera de estos
+casos hasta confirmar la regla con el cliente.
+
+Los casos de edicion requieren que exista la descarga del caso anterior. Para
+ejecutar una pareja en orden, se usan comandos separados:
+
+```powershell
+npx playwright test tests/e2e/ordenamiento-gpo-mod/CP13/CP13.spec.ts
+npx playwright test tests/e2e/ordenamiento-gpo-mod/CP14/CP14.spec.ts
+```
+
+Los casos de edicion se ejecutan en el proyecto `excel`, sin abrir navegador ni
+ejecutar el setup de autenticacion. Por ello no generan videos o capturas vacias;
+su evidencia es la plantilla adjunta y las anotaciones del reporte.
+
 Las rutas de `credentials.json` y `token.json` se configuran en `.env` mediante
 `GOOGLE_CREDENTIALS_PATH` y `GOOGLE_TOKEN_PATH`. Estos archivos contienen secretos
 y no deben copiarse al repositorio ni incluirse en reportes.
@@ -85,8 +106,10 @@ tecnicos de overlay/renderizado, sin ocultar datos inexistentes ni ambiguedades.
 ## Alcance actual
 
 La linea base contiene configuracion DEV, sesion Admin manual reutilizable,
-fixtures, diagnostico de fallos y reporting. Los CP1-CP48 estan documentados y
-pendientes de implementacion.
+fixtures, diagnostico de fallos y reporting. Estan implementados los casos de
+descarga CP1, CP13, CP25 y CP37; los casos de edicion CP2, CP14, CP26 y CP38; y
+los casos de carga de menu CP4, CP16, CP28 y CP40. Los demas casos permanecen
+pendientes.
 
 Organizar Page Objects por pantallas y pruebas por escenarios o flujos. Los specs
 deben importar `test` y `expect` desde `@fixtures/base.fixture`, utilizar assertions

@@ -12,6 +12,17 @@ export type TemplateDownloadCase = TemplateDownloadFormData & {
   selectDate: boolean;
 };
 
+export type TemplateEditCase = {
+  id: 'CP2' | 'CP14' | 'CP26' | 'CP38';
+  sourceCaseId: TemplateDownloadCase['id'];
+  brandTag: BrandTag;
+  title: string;
+  requirement: string;
+  sourceSheet: string;
+  sourceRow: number;
+  aggregators: string[];
+};
+
 export type MenuLoadCase = MenuLoadFormData & {
   id: 'CP4' | 'CP16' | 'CP28' | 'CP40';
   brandTag: BrandTag;
@@ -83,6 +94,50 @@ export const cp37Data: TemplateDownloadCase = {
   menuType: 'Delivery Codisys',
   selectDate: false,
   expectedMessage: expectedTemplateRequestMessage,
+};
+
+export const cp2Data: TemplateEditCase = {
+  id: 'CP2',
+  sourceCaseId: 'CP1',
+  brandTag: '@starbucks',
+  title: 'Edicion de plantilla de grupos modificadores y modificadores - Starbucks',
+  requirement: 'OrdenamientoGpoMod&Mod 2.0',
+  sourceSheet: 'SBX',
+  sourceRow: 3,
+  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
+};
+
+export const cp14Data: TemplateEditCase = {
+  id: 'CP14',
+  sourceCaseId: 'CP13',
+  brandTag: '@burger-king',
+  title: 'Edicion de plantilla de grupos modificadores y modificadores - Burger King',
+  requirement: 'OrdenamientoGpoMod&Mod 2.0',
+  sourceSheet: 'BK',
+  sourceRow: 3,
+  aggregators: ['UberEats', 'Didi', 'Rappi'],
+};
+
+export const cp26Data: TemplateEditCase = {
+  id: 'CP26',
+  sourceCaseId: 'CP25',
+  brandTag: '@vips',
+  title: 'Edicion de plantilla de grupos modificadores y modificadores - VIPS',
+  requirement: 'OrdenamientoGpoMod&Mod 2.0',
+  sourceSheet: 'VIPS',
+  sourceRow: 3,
+  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
+};
+
+export const cp38Data: TemplateEditCase = {
+  id: 'CP38',
+  sourceCaseId: 'CP37',
+  brandTag: '@chilis',
+  title: "Edicion de plantilla de grupos modificadores y modificadores - Chili's",
+  requirement: 'OrdenamientoGpoMod&Mod 2.0',
+  sourceSheet: 'Chilis',
+  sourceRow: 3,
+  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
 };
 
 export const cp4Data: MenuLoadCase = {

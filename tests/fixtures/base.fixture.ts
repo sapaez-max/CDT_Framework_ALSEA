@@ -6,6 +6,7 @@ import { GmailClient } from '@src/integrations/google/gmail-client';
 type BaseFixtures = {
   appPage: Page;
   gmailClient: GmailClient;
+  autoNavigate: void;
 };
 
 async function withDiagnostics<T>(action: () => Promise<T>, page: Page, testInfo: TestInfo): Promise<T> {
@@ -26,13 +27,16 @@ export const test = base.extend<BaseFixtures>({
   gmailClient: async ({}, use) => {
     await use(await GmailClient.create());
   },
+  autoNavigate: [async ({ page }, use) => {
+    if (env.autoGoto) {
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('body')).toBeVisible();
+    }
+    await use();
+  }, { auto: true }],
 });
 
-test.beforeEach(async ({ page }) => {
-  if (!env.autoGoto) return;
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('body')).toBeVisible();
-});
+export const fileTest = base;
 
 export { expect };
 export type { Page, TestInfo };

@@ -1,6 +1,6 @@
 ﻿import { defineConfig, devices } from '@playwright/test';
 import { env } from './src/config/env';
-import { getRoleProjectConfigs } from './src/config/roles';
+import { fileEditTestPattern, getRoleProjectConfigs } from './src/config/roles';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -31,6 +31,10 @@ export default defineConfig({
   outputDir: 'artifacts/test-results',
   projects: [
     ...getRoleProjectConfigs(),
+    {
+      name: 'excel',
+      testMatch: fileEditTestPattern,
+    },
     {
       name: 'setup',
       testDir: './setup',
