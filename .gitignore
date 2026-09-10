@@ -1,12 +1,9 @@
 ﻿node_modules/
-.env
 .env.*
+.env
 !.env.example
 .auth/
-/credentials.json
-/token.json
 reports/
-artifacts/
 test-results/
 playwright-report/
 blob-report/
