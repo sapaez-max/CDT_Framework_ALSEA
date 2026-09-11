@@ -14,8 +14,7 @@ export async function validateCoreViewer(
   await visor.applyFilters(caseData);
 
   try {
-    const jsonText = await visor.validateTemplateExpectation(expectation);
-    await attachJsonEvidence(testInfo, caseData.id, jsonText);
+    await visor.validateTemplateExpectation(expectation);
   } catch (error) {
     try {
       const diagnostic = await visor.collectDiagnostic(caseData, expectation);

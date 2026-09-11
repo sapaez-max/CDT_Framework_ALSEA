@@ -108,3 +108,41 @@ export type CoreViewerCase = CaseMetadata & {
   aggregator: string | string[];
   menuType: string | string[];
 };
+
+export type JsonValidationCase = CaseMetadata & {
+  scenario: 'validateJson';
+  sourceCaseId: CaseId;
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+};
+
+export type ReorderGroupsCase = CaseMetadata & {
+  scenario: 'reorderGroups';
+  sourceCaseId: CaseId;
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+  loadType: string | string[];
+  versionMenu: string | string[];
+  filterDescription: string;
+  menuDescription: string;
+  expectedFilterMessage: RegExp;
+  expectedMenuMessage: RegExp;
+  expectedMenuEmailSubject: string | RegExp;
+  expectedMenuEmailBodyFields: EmailBodyExpectation[];
+  expectedFilterEmailSubject?: string | RegExp;
+  expectedFilterEmailBodyFields?: EmailBodyExpectation[];
+};
+
+export type ReorderModifiersCase = Omit<ReorderGroupsCase, 'scenario'> & {
+  scenario: 'reorderModifiers';
+};
+
+export type ReorderGroupsAndModifiersCase = Omit<ReorderGroupsCase, 'scenario'> & {
+  scenario: 'reorderGroupsAndModifiers';
+};

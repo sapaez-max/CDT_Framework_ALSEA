@@ -10,6 +10,10 @@ export const chainedEditTestPattern = fileEditTestPattern;
 export const chainedFilterLoadTestPattern = new RegExp(`${scenarioPath}03-upload-filters\\.spec\\.ts`);
 export const chainedMenuLoadTestPattern = new RegExp(`${scenarioPath}04-upload-menu\\.spec\\.ts`);
 export const chainedCoreViewerTestPattern = new RegExp(`${scenarioPath}05-validate-visor\\.spec\\.ts`);
+export const chainedJsonValidationTestPattern = new RegExp(`${scenarioPath}06-validate-json\\.spec\\.ts`);
+export const chainedReorderGroupsTestPattern = new RegExp(`${scenarioPath}07-reorder-groups\\.spec\\.ts`);
+export const chainedReorderModifiersTestPattern = new RegExp(`${scenarioPath}08-reorder-modifiers\\.spec\\.ts`);
+export const chainedReorderGroupsAndModifiersTestPattern = new RegExp(`${scenarioPath}09-reorder-groups-and-modifiers\\.spec\\.ts`);
 export const chainedOrdenamientoTestPattern = new RegExp(`${scenarioPath}.*\\.spec\\.ts`);
 
 export function getRoleProjectConfigs(): Project[] {

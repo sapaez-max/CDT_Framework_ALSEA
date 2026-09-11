@@ -19,6 +19,21 @@ export async function attachGmailEvidence(
     contentType: 'text/html',
   });
 
+  await testInfo.attach(`correo-${caseData.id}`, {
+    body: Buffer.from(JSON.stringify({
+      messageId: email.messageId,
+      threadId: email.threadId,
+      receivedAt: email.receivedAt,
+      from: email.from,
+      subject: email.subject,
+      attachmentName: email.attachmentName,
+      savedPath: email.savedPath,
+      functionalStatus: email.functionalStatus,
+      validations: email.validations,
+    }, null, 2), 'utf8'),
+    contentType: 'application/json',
+  });
+
   if (email.savedPath) {
     await testInfo.attach(`plantilla-recibida-${caseData.id}`, {
       path: email.savedPath,

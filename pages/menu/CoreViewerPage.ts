@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '@pages/base/BasePage';
 import type { CoreViewerTemplateExpectation } from '@utils/core-viewer-template';
+import type { ReorderedGroupsExpectation } from '@utils/group-reorder-template';
 
 export type CoreViewerFilters = {
   country: string | string[];
@@ -63,7 +64,7 @@ export class CoreViewerPage extends BasePage {
     await this.selectCard(filters.branch, 'Sucursal');
   }
 
-  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<string> {
+  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<void> {
     await this.search(expectation.categoryName);
     await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
     await this.openVisibleResult(expectation.categoryName);
@@ -73,9 +74,84 @@ export class CoreViewerPage extends BasePage {
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
     await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
     await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
-    const jsonText = await this.openJsonView();
-    this.validateJsonExpectation(jsonText, expectation);
-    return jsonText;
+    await this.expectGeneratedChangeVisible(expectation);
+  }
+
+  async openTemplateJson(expectation: CoreViewerTemplateExpectation): Promise<string> {
+    await this.search(expectation.categoryName);
+    await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
+    await this.openVisibleResult(expectation.categoryName);
+
+    await this.search(expectation.itemName);
+    await this.openExpectedProduct(expectation);
+    await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
+    await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
+    await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
+    return this.openJsonView();
+  }
+
+  async validateReorderedGroups(expectation: ReorderedGroupsExpectation): Promise<void> {
+    await this.search(expectation.categoryName);
+    await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
+    await this.openVisibleResult(expectation.categoryName);
+
+    await this.search(expectation.itemName);
+    await this.openExpectedProduct({
+      inputPath: expectation.inputPath,
+      itemId: expectation.itemId,
+      itemName: expectation.itemName,
+      itemDescription: expectation.itemDescription,
+      itemPrices: [],
+      categoryName: expectation.categoryName,
+      groupId: expectation.groups[0]?.id ?? '',
+      groupName: expectation.groups[0]?.name ?? '',
+      groupDescription: '',
+      groupOrder: expectation.groups[0]?.expectedOrder ?? 0,
+      modifiers: expectation.groups[0]?.modifiers ?? [],
+    });
+    await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
+    await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
+    await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
+
+    const preview = this.productPreview();
+    for (const group of expectation.groups) {
+      await expect(
+        preview.getByText(containsTextPattern(group.name)),
+        `Debe visualizarse el grupo ${group.id}: ${group.name}`,
+      ).toBeVisible();
+    }
+
+    const previewText = normalizeVisibleText(await preview.textContent() ?? '');
+    const groupPositions = expectation.groups.map(group => ({
+      group,
+      position: previewText.indexOf(normalizeVisibleText(group.name)),
+    }));
+    expect(
+      groupPositions.every(item => item.position >= 0),
+      `Todos los grupos esperados deben existir en el arbol: ${expectation.groups.map(group => group.name).join(', ')}`,
+    ).toBe(true);
+    expect(
+      groupPositions.map(item => item.position),
+      'Los grupos modificadores deben mostrarse en el orden definido en la plantilla',
+    ).toEqual([...groupPositions.map(item => item.position)].sort((left, right) => left - right));
+
+    for (let index = 0; index < groupPositions.length; index += 1) {
+      const current = groupPositions[index];
+      const next = groupPositions[index + 1];
+      const segment = previewText.slice(current.position, next?.position ?? previewText.length);
+      const modifierPositions = visibleModifierPositionsInOrder(
+        segment,
+        current.group.modifiers.map(modifier => modifier.name),
+      );
+      expect(
+        modifierPositions.every(position => position >= 0),
+        `Los modificadores del grupo ${current.group.name} deben seguir visibles: ${current.group.modifiers.map(modifier => modifier.name).join(', ')}`,
+      ).toBe(true);
+      expect(
+        modifierPositions,
+        `Los modificadores del grupo ${current.group.name} deben conservar su orden original`,
+      ).toEqual([...modifierPositions].sort((left, right) => left - right));
+    }
   }
 
   async collectDiagnostic(
@@ -104,10 +180,11 @@ export class CoreViewerPage extends BasePage {
       };
     }
 
+    const previewText = await this.productPreview().textContent() ?? '';
+    const groupsFound = collectVisibleGroupNames(previewText);
     const json = this.jsonContent();
     const jsonVisible = await json.isVisible().catch(() => false);
     const jsonText = jsonVisible ? await json.textContent() ?? '' : '';
-    const groupsFound = jsonText.includes(expectation.groupName) ? [expectation.groupName] : [];
 
     return {
       context: filters,
@@ -120,7 +197,7 @@ export class CoreViewerPage extends BasePage {
       jsonText: jsonVisible ? jsonText : undefined,
       groupsFound,
       expectedNameInTree: groupsFound.includes(expectation.groupName),
-      expectedIdInDom: jsonText.includes(expectation.groupId),
+      expectedIdInDom: previewText.includes(expectation.groupId) || jsonText.includes(expectation.groupId),
       treeHadCollapsedNodes: false,
       treeScroll: null,
       internalScrollContainers: [],
@@ -270,6 +347,26 @@ export class CoreViewerPage extends BasePage {
     await this.waitForLoadingToFinish();
   }
 
+  private async expectGeneratedChangeVisible(expectation: CoreViewerTemplateExpectation): Promise<void> {
+    const preview = this.productPreview();
+    const group = preview.getByText(containsTextPattern(expectation.groupName));
+
+    if (await group.isVisible().catch(() => false)) {
+      await expect(
+        group,
+        `Debe visualizarse el grupo modificador editado: ${expectation.groupName}`,
+      ).toBeVisible();
+      return;
+    }
+
+    for (const modifier of expectation.modifiers) {
+      await expect(
+        preview.getByText(containsTextPattern(modifier.name)),
+        `Debe visualizarse el modificador editado ${modifier.id}: ${modifier.name}`,
+      ).toBeVisible();
+    }
+  }
+
   private async openJsonView(): Promise<string> {
     const preview = this.productPreview();
     const viewJson = preview
@@ -282,38 +379,6 @@ export class CoreViewerPage extends BasePage {
     const json = this.jsonContent();
     await expect(json, 'Debe abrirse el JSON del producto seleccionado').toBeVisible();
     return await json.textContent() ?? '';
-  }
-
-  private validateJsonExpectation(
-    jsonText: string,
-    expectation: CoreViewerTemplateExpectation,
-  ): void {
-    const expectedValues = [
-      { label: 'item', value: expectation.itemId },
-      { label: 'nombre del item', value: expectation.itemName },
-      { label: 'descripcion del item', value: expectation.itemDescription },
-      { label: 'grupo modificador', value: expectation.groupId },
-      { label: 'nombre del grupo modificador', value: expectation.groupName },
-      { label: 'descripcion del grupo modificador', value: expectation.groupDescription },
-      ...expectation.modifiers.flatMap(modifier => [
-        { label: `modificador ${modifier.id}`, value: modifier.id },
-        { label: `nombre del modificador ${modifier.id}`, value: modifier.name },
-      ]),
-    ];
-
-    for (const expected of expectedValues) {
-      expect(
-        jsonText.includes(expected.value),
-        `El JSON debe contener ${expected.label}: ${expected.value}`,
-      ).toBe(true);
-    }
-
-    const modifierPositions = expectation.modifiers.map(modifier => jsonText.indexOf(modifier.name));
-    const sortedPositions = [...modifierPositions].sort((left, right) => left - right);
-    expect(
-      modifierPositions,
-      'Los modificadores deben conservar en el JSON el orden definido en la plantilla',
-    ).toEqual(sortedPositions);
   }
 
   private async matchVisibleCard(value: string): Promise<
@@ -431,6 +496,27 @@ function exactTextPattern(value: string): RegExp {
   return new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, 'i');
 }
 
+function containsTextPattern(value: string): RegExp {
+  return new RegExp(escapeRegExp(value), 'i');
+}
+
+function visibleModifierPositionsInOrder(segment: string, modifierNames: string[]): number[] {
+  let cursor = 0;
+  return modifierNames.map((modifierName) => {
+    const normalizedName = normalizeVisibleText(modifierName);
+    const remainingSegment = segment.slice(cursor);
+    const pattern = new RegExp(`${escapeRegExp(normalizedName)}\\s*[-–—]`, 'i');
+    const match = pattern.exec(remainingSegment);
+    const position = match
+      ? cursor + match.index
+      : segment.indexOf(normalizedName, cursor);
+    if (position >= 0) {
+      cursor = position + normalizedName.length;
+    }
+    return position;
+  });
+}
+
 function matchesExactTrailingCode(optionText: string, value: string): boolean {
   const normalizedValue = normalizeForComparison(value);
   const normalizedText = normalizeForComparison(optionText);
@@ -457,6 +543,20 @@ function exactLabeledCodePattern(value: string): RegExp {
   return new RegExp(`(?:CECO|SUCURSAL|CODIGO)\\s*${escapeRegExp(normalizeForComparison(value))}(?=\\D|$)`, 'i');
 }
 
+function collectVisibleGroupNames(previewText: string): string[] {
+  const normalizedLines = previewText
+    .split(/\r?\n/)
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  return [...new Set(normalizedLines.filter(line =>
+    !/^Ver JSON$/i.test(line)
+    && !/^Previsualizaci[oó]n$/i.test(line)
+    && !/^Modificadores$/i.test(line)
+    && !/^Productos?$/i.test(line)
+    && !/^\$?\d+(?:\.\d{2})?$/.test(line)))];
+}
+
 function normalizeForComparison(value: string): string {
   return value
     .normalize('NFD')
@@ -464,6 +564,10 @@ function normalizeForComparison(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
+}
+
+function normalizeVisibleText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 function formatPrice(value: number): string {

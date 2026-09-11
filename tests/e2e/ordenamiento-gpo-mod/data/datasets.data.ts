@@ -55,6 +55,10 @@ function currentScenarioApplicability() {
     uploadFilters: true,
     uploadMenu: true,
     validateVisor: true,
+    validateJson: true,
+    reorderGroups: true,
+    reorderModifiers: true,
+    reorderGroupsAndModifiers: true,
   } as const;
 }
 

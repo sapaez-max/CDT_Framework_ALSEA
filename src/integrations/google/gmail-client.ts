@@ -58,6 +58,18 @@ export type EmailValidationResult = {
   passed: boolean;
 };
 
+export type EmailFunctionalStatus = {
+  name: string;
+  status: 'PASS' | 'FAIL';
+  message: string;
+  counters: Array<{
+    label: string;
+    rawValue: string;
+    numericValue?: number;
+    validNumber: boolean;
+  }>;
+};
+
 export type TemplateEmailResult = {
   messageId: string;
   threadId?: string;
@@ -68,6 +80,7 @@ export type TemplateEmailResult = {
   savedPath?: string;
   bodyPreview: string;
   validations: EmailValidationResult[];
+  functionalStatus?: EmailFunctionalStatus;
 };
 
 export class GmailClient {

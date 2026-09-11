@@ -1,5 +1,6 @@
 import { fileTest as test, type TestInfo } from '@fixtures/base.fixture';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
 import type { TemplateEditCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import {
@@ -64,6 +65,37 @@ export async function editTemplateWorkflow(
       description: `${change.field}: "${change.previousValue}" -> "${change.newValue}"`,
     });
   }
+
+  await testInfo.attach('Resumen visual de modificaciones', {
+    body: Buffer.from(buildModificationEvidenceHtml({
+      caseId: caseData.id,
+      title: caseData.title,
+      context: {
+        country: context.country,
+        brand: context.brand,
+        branch: context.branch,
+        aggregator: context.aggregator,
+        menuType: context.menuType,
+      },
+      sourceFile: result.sourcePath,
+      resultFile: result.outputPath,
+      item: context.product,
+      category: context.category?.name,
+      modifierGroups: [{
+        id: result.groupId,
+        nameBefore: groupName?.previousValue,
+        nameAfter: groupName?.newValue,
+        descriptionBefore: groupDescription?.previousValue,
+        descriptionAfter: groupDescription?.newValue,
+      }],
+      modifiers: context.modifiers.map(modifier => ({
+        id: modifier.id,
+        nameBefore: modifier.nameBefore,
+        nameAfter: modifier.nameAfter,
+      })),
+    })),
+    contentType: 'text/html',
+  });
 
   await testInfo.attach(`plantilla-editada-${caseData.id}`, {
     path: result.outputPath,

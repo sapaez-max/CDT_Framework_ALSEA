@@ -3,6 +3,7 @@ import {
   copyExcelFromPreviousCase,
   type ArtifactScope,
 } from '@utils/case-artifact-manager';
+import { reorderGroupsAndModifiers, reorderOnlyGroups, reorderOnlyModifiers } from '@utils/group-reorder-template';
 import { editDownloadedTemplate } from '@utils/template-editor';
 
 export class ExcelService {
@@ -12,6 +13,18 @@ export class ExcelService {
 
   editTemplate(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
     return editDownloadedTemplate({ caseId, sourceCaseId, aggregator, artifactScope: scope });
+  }
+
+  reorderGroups(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    return reorderOnlyGroups({ caseId, sourceCaseId, aggregator, artifactScope: scope });
+  }
+
+  reorderModifiers(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    return reorderOnlyModifiers({ caseId, sourceCaseId, aggregator, artifactScope: scope });
+  }
+
+  reorderGroupsAndModifiers(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    return reorderGroupsAndModifiers({ caseId, sourceCaseId, aggregator, artifactScope: scope });
   }
 
   readViewerExpectation(filePath: string) {

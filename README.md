@@ -66,10 +66,13 @@ Los bloques implementados siguen una cadena de cinco casos por marca:
 descarga, edicion, carga de filtros, carga de menu y validacion en Visor CORE. CP2, CP14, CP26 y CP38 toman
 respectivamente las plantillas de CP1, CP13, CP25 y CP37, limpian solo su carpeta,
 copian el Excel anterior al espacio de su corrida y juego de datos y editan esa copia. La
-edicion agrega la fecha de ejecucion en formato `_YYYYMMDD` al final del nombre
+edicion agrega un timestamp local de ejecucion en formato `_YYYYMMDD_HHmmss` al final del nombre
 comercial del item seleccionado, cambia el nombre comercial y la descripcion de un
 grupo modificador, y el nombre comercial de sus dos primeros modificadores relacionados;
-los demas valores, ordenes, posiciones y columnas de agregadores permanecen intactos. CP3,
+los demas valores, ordenes, posiciones y columnas de agregadores permanecen intactos. Los
+identificadores dinamicos usan `formatExecutionTimestamp` desde
+`src/utils/execution-timestamp.ts`, se generan una sola vez por ejecucion y los
+escenarios posteriores los recuperan desde el Excel o artefacto generado. CP3,
 CP15, CP27 y CP39 copian el resultado de la edicion a su propia carpeta antes de
 cargar filtros. CP4, CP16, CP28 y CP40 copian el resultado del caso de filtros
 como referencia trazable del bloque antes de cargar menu. Si un caso requiere un

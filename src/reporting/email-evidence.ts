@@ -22,6 +22,9 @@ type EmailEvidenceInput = {
 export function buildEmailEvidenceHtml({ caseData, email }: EmailEvidenceInput): string {
   const rows = email.validations.map(validationRow).join('\n');
   const branch = caseData.baseBranch ?? caseData.branch ?? [];
+  const functionalStatus = email.functionalStatus
+    ? functionalStatusSection(email.functionalStatus)
+    : '';
 
   return `<!doctype html>
 <html lang="es">
@@ -86,10 +89,36 @@ export function buildEmailEvidenceHtml({ caseData, email }: EmailEvidenceInput):
     </tbody>
   </table>
 
+  ${functionalStatus}
+
   <h2>Contenido del correo</h2>
   <pre>${escapeHtml(email.bodyPreview || 'No se obtuvo contenido textual del correo.')}</pre>
 </body>
 </html>`;
+}
+
+function functionalStatusSection(status: NonNullable<TemplateEmailResult['functionalStatus']>): string {
+  const rows = status.counters.map(counter => `<tr>
+        <td>${escapeHtml(counter.label)}</td>
+        <td>${escapeHtml(counter.rawValue)}</td>
+      </tr>`).join('\n');
+  const statusClass = status.status === 'PASS' ? 'pass' : 'fail';
+
+  return `<h2>Resultado funcional</h2>
+  <table class="meta">
+    <tbody>
+      <tr><th>Estado de carga</th><td class="status ${statusClass}">${status.status}</td></tr>
+      <tr><th>Mensaje</th><td>${escapeHtml(status.message)}</td></tr>
+    </tbody>
+  </table>
+  <table class="validations">
+    <thead>
+      <tr><th>Contador</th><th>Valor recibido</th></tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>`;
 }
 
 export function excelContentType(filePath: string): string {

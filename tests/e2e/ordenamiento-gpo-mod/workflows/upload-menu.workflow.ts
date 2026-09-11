@@ -13,6 +13,11 @@ import {
   createExecutionContext,
   type ExecutionContext,
 } from '../support/execution-context';
+import {
+  appendMenuLoadValidations,
+  evaluateMenuLoadEmail,
+  throwIfMenuLoadFailed,
+} from '../support/menu-load-email-result';
 import { goToLanding } from '../support/navigation';
 
 export async function uploadMenuWorkflow(
@@ -61,7 +66,10 @@ export async function uploadMenuWorkflow(
       bodyFields: caseData.expectedEmailBodyFields,
       artifactScope: artifactScope(context),
     }));
+  const loadResult = evaluateMenuLoadEmail(email);
+  appendMenuLoadValidations(email, loadResult);
   await attachGmailEvidence(testInfo, caseData, email);
+  throwIfMenuLoadFailed(loadResult);
 
   expect(prepared.targetPath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
   await testInfo.attach(`plantilla-referencia-menu-${caseData.id}`, {

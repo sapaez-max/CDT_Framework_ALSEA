@@ -6,6 +6,10 @@ import {
   chainedFilterLoadTestPattern,
   chainedMenuLoadTestPattern,
   chainedCoreViewerTestPattern,
+  chainedJsonValidationTestPattern,
+  chainedReorderGroupsTestPattern,
+  chainedReorderModifiersTestPattern,
+  chainedReorderGroupsAndModifiersTestPattern,
   getRoleProjectConfigs,
 } from './src/config/roles';
 
@@ -73,6 +77,42 @@ export default defineConfig({
     {
       name: 'ordenamiento-visor-core',
       testMatch: chainedCoreViewerTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-json',
+      testMatch: chainedJsonValidationTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-reorden-grupos',
+      testMatch: chainedReorderGroupsTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-reorden-modificadores',
+      testMatch: chainedReorderModifiersTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-reorden-grupos-modificadores',
+      testMatch: chainedReorderGroupsAndModifiersTestPattern,
       use: {
         ...devices['Desktop Chrome'],
         storageState: env.authEnabled ? env.authStatePath : undefined,

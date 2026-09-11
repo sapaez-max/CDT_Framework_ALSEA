@@ -4,6 +4,7 @@ import {
   copyExcelFromPreviousCase,
   type ArtifactScope,
 } from './case-artifact-manager';
+import { formatExecutionTimestamp } from './execution-timestamp';
 
 export type TemplateEditRequest = {
   caseId: string;
@@ -94,8 +95,8 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     modifierAggregatorColumn,
     request.aggregator,
   );
-  const currentDate = formatDate(new Date());
-  const marker = `${request.caseId}_${currentDate}`;
+  const executionTimestamp = formatExecutionTimestamp(new Date());
+  const marker = `${request.caseId}_${executionTimestamp}`;
   const changes: CellChange[] = [];
   const unchangedCells = [
     ...snapshotUnchangedRowCells(
@@ -113,7 +114,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   ];
 
   const previousItemName = displayValue(items.rows[selection.itemRow][itemNameColumn]).trim();
-  changeCell(items, selection.itemRow, itemNameColumn, `${previousItemName}_${currentDate}`, changes);
+  changeCell(items, selection.itemRow, itemNameColumn, `${previousItemName}_${executionTimestamp}`, changes);
   changeCell(groups, selection.groupRow, groupNameColumn, `AUTO_${marker}`, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
 
@@ -265,14 +266,6 @@ function selectRelatedRows(
 
 function isEnabled(value: unknown): boolean {
   return displayValue(value).trim() === '*';
-}
-
-function formatDate(date: Date): string {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('');
 }
 
 function changeCell(
