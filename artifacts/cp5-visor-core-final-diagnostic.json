@@ -1,0 +1,59 @@
+{
+  "caseId": "CP5",
+  "classification": "DEFECTO FUNCIONAL",
+  "timestamp": "2026-09-10T18:34:39.7885155-06:00",
+  "context": {
+    "country": "MEXICO",
+    "brand": "STARBUCKS",
+    "aggregator": "UBER EATS",
+    "branch": "38109",
+    "branchResolvedAs": "STARBUCKS WTC",
+    "ceco": "38109"
+  },
+  "product": {
+    "itemId": "20209",
+    "name": "Vainilla Sugar Free PROteina Latte",
+    "category": "Hola PROteina"
+  },
+  "excel": {
+    "path": "C:\\CDT\\Framework_ALSEA\\artifacts\\downloads\\CP5\\STARBUCKS_Delivery BIS_Desarrollo.xlsx",
+    "sheet": "GrupoModificador",
+    "groupId": "20209_13",
+    "commercialName": "AUTO_CP2_20260910",
+    "description": "Descripcion automatizada CP2_20260910",
+    "order": 5,
+    "modifiers": [
+      {
+        "id": "24114",
+        "commercialName": "AUTO_CP2_20260910_MOD_2",
+        "order": 4
+      },
+      {
+        "id": "24102",
+        "commercialName": "AUTO_CP2_20260910_MOD_1",
+        "order": 5
+      }
+    ]
+  },
+  "core": {
+    "treeHadCollapsedNodes": false,
+    "treeScroll": {
+      "clientHeight": 992,
+      "scrollHeight": 995
+    },
+    "hadInternalScroll": true,
+    "expectedGroupNameFound": false,
+    "expectedGroupIdFoundInDom": false,
+    "groupsFound": [
+      "Tipo de grano de cafe",
+      "Shot Extra",
+      "Adicionales",
+      "Jarabes",
+      "Tipo de azucar"
+    ]
+  },
+  "evidence": {
+    "screenshot": "C:\\CDT\\Framework_ALSEA\\artifacts\\cp5-visor-core-final-diagnostic.png"
+  },
+  "conclusion": "El Excel final usado por CP5 contiene el grupo 20209_13 con Nombre Comercial AUTO_CP2_20260910, pero el Visor CORE para el producto y contexto correctos no expone ese nombre ni el ID en texto o atributos del arbol."
+}

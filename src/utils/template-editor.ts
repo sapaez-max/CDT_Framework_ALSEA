@@ -1,6 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import xlsx, { type WorkBook, type WorkSheet } from 'xlsx';
+import { copyExcelFromPreviousCase, getLatestExcelForCase } from './case-artifact-manager';
 
 export type TemplateEditRequest = {
   caseId: string;
@@ -17,6 +17,7 @@ export type CellChange = {
 };
 
 export type TemplateEditResult = {
+  sourcePath: string;
   inputPath: string;
   outputPath: string;
   itemId: string;
@@ -36,7 +37,10 @@ type SheetTable = {
 const requiredSheets = ['Items', 'GrupoModificador', 'Modificadores'] as const;
 
 export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEditResult {
-  const inputPath = findDownloadedTemplate(request.sourceCaseId);
+  const { sourcePath, targetPath: inputPath } = copyExcelFromPreviousCase({
+    fromCase: request.sourceCaseId,
+    toCase: request.caseId,
+  });
   const workbook = xlsx.readFile(inputPath, { cellStyles: true });
   const originalSheetNames = [...workbook.SheetNames];
   const originalRowCounts = Object.fromEntries(
@@ -94,18 +98,13 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     changeCell(modifiers, row, modifierAggregatorColumn, '*', changes);
   });
 
-  const outputDirectory = path.resolve('artifacts', 'edited', safeSegment(request.caseId));
-  const parsedName = path.parse(inputPath);
-  const outputPath = path.join(
-    outputDirectory,
-    `${parsedName.name}_EDITADO_${safeSegment(request.caseId)}${parsedName.ext}`,
-  );
-  fs.mkdirSync(outputDirectory, { recursive: true });
+  const outputPath = inputPath;
   xlsx.writeFile(workbook, outputPath, { compression: true, cellStyles: true });
 
   verifyEditedTemplate(outputPath, originalSheetNames, originalRowCounts, changes);
 
   return {
+    sourcePath,
     inputPath,
     outputPath,
     itemId: canonicalId(selection.itemId),
@@ -116,31 +115,8 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   };
 }
 
-function findDownloadedTemplate(sourceCaseId: string): string {
-  const directory = path.resolve('artifacts', 'downloads', safeSegment(sourceCaseId));
-  if (!fs.existsSync(directory)) {
-    throw new Error(
-      `No existe la carpeta ${directory}. Debe ejecutarse ${sourceCaseId} antes de editar la plantilla.`,
-    );
-  }
-
-  const files = fs.readdirSync(directory)
-    .filter(file => /\.xlsx?$/i.test(file))
-    .map(file => path.join(directory, file));
-
-  if (files.length === 0) {
-    throw new Error(
-      `No se encontro un archivo .xls o .xlsx en ${directory}. Debe ejecutarse ${sourceCaseId} antes de editar la plantilla.`,
-    );
-  }
-
-  if (files.length > 1) {
-    throw new Error(
-      `Se encontraron ${files.length} plantillas en ${directory}. Debe existir un unico archivo de entrada: ${files.map(file => path.basename(file)).join(', ')}.`,
-    );
-  }
-
-  return files[0];
+export function findEditedTemplate(caseId: string): string {
+  return getLatestExcelForCase(caseId);
 }
 
 function requiredTable(workbook: WorkBook, expectedName: string): SheetTable {
@@ -336,6 +312,3 @@ function hasValue(value: unknown): boolean {
   return value !== null && value !== undefined && String(value).trim() !== '';
 }
 
-function safeSegment(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, '_');
-}

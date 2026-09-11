@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76" viewBox="0 0 76 76">
+  <g id="ordenTickets" transform="translate(-7910 -3387)">
+    <g id="Rectángulo_1279" data-name="Rectángulo 1279" transform="translate(7910 3387)" fill="#fff" stroke="#707070" stroke-width="1" opacity="0">
+      <rect width="76" height="76" stroke="none"/>
+      <rect x="0.5" y="0.5" width="75" height="75" fill="none"/>
+    </g>
+    <g id="Grupo_16605" data-name="Grupo 16605" transform="translate(6158.959 3082)">
+      <rect id="Rectángulo_36" data-name="Rectángulo 36" width="57.918" height="43.34" rx="10" transform="translate(1760.041 321.779)" fill="#fff"/>
+      <path id="Rectángulo_36_-_Contorno" data-name="Rectángulo 36 - Contorno" d="M5.314,2.125A3.192,3.192,0,0,0,2.125,5.314V38.027a3.192,3.192,0,0,0,3.188,3.188H52.6a3.192,3.192,0,0,0,3.188-3.188V5.314A3.192,3.192,0,0,0,52.6,2.125H5.314M5.314,0H52.6a5.314,5.314,0,0,1,5.314,5.314V38.027A5.314,5.314,0,0,1,52.6,43.34H5.314A5.314,5.314,0,0,1,0,38.027V5.314A5.314,5.314,0,0,1,5.314,0Z" transform="translate(1760.041 321.779)" fill="#00567d"/>
+      <path id="Rectángulo_4" data-name="Rectángulo 4" d="M0,0H2.97a5,5,0,0,1,5,5V35.684a5,5,0,0,1-5,5H0a0,0,0,0,1,0,0V0A0,0,0,0,1,0,0Z" transform="translate(1808.395 322.842)" fill="#6bc4e8"/>
+      <path id="Rectángulo_2" data-name="Rectángulo 2" d="M5.314,2.657A2.66,2.66,0,0,0,2.657,5.314V38.027a2.66,2.66,0,0,0,2.657,2.657H52.6a2.66,2.66,0,0,0,2.657-2.657V5.314A2.66,2.66,0,0,0,52.6,2.657H5.314M5.314,0H52.6a5.314,5.314,0,0,1,5.314,5.314V38.027A5.314,5.314,0,0,1,52.6,43.34H5.314A5.314,5.314,0,0,1,0,38.027V5.314A5.314,5.314,0,0,1,5.314,0Z" transform="translate(1760.041 321.779)" fill="#00567d"/>
+      <path id="Línea_8" data-name="Línea 8" d="M18.489.157H-1.172A1.328,1.328,0,0,1-2.5-1.172,1.328,1.328,0,0,1-1.172-2.5h19.66a1.328,1.328,0,0,1,1.328,1.328A1.328,1.328,0,0,1,18.489.157Z" transform="translate(1780.607 370.242)" fill="#00567d"/>
+      <rect id="Rectángulo_39" data-name="Rectángulo 39" width="37.86" height="30.588" rx="7" transform="translate(1804.444 315.602) rotate(90)" fill="#fff"/>
+      <path id="Rectángulo_39_-_Contorno" data-name="Rectángulo 39 - Contorno" d="M3.72,2.657A1.064,1.064,0,0,0,2.657,3.72V26.868A1.064,1.064,0,0,0,3.72,27.931H34.141A1.064,1.064,0,0,0,35.2,26.868V3.72a1.064,1.064,0,0,0-1.063-1.063H3.72M3.72,0H34.141a3.72,3.72,0,0,1,3.72,3.72V26.868a3.72,3.72,0,0,1-3.72,3.72H3.72A3.719,3.719,0,0,1,0,26.868V3.72A3.719,3.719,0,0,1,3.72,0Z" transform="translate(1804.444 315.602) rotate(90)" fill="#00567d"/>
+      <path id="Trazado_86" data-name="Trazado 86" d="M18.153.157H-1.172A1.328,1.328,0,0,1-2.5-1.172,1.328,1.328,0,0,1-1.172-2.5H18.153a1.328,1.328,0,0,1,1.328,1.328A1.328,1.328,0,0,1,18.153.157Z" transform="translate(1780.607 335.703)" fill="#00567d"/>
+      <path id="Trazado_88" data-name="Trazado 88" d="M18.153.157H-1.172A1.328,1.328,0,0,1-2.5-1.172,1.328,1.328,0,0,1-1.172-2.5H18.153a1.328,1.328,0,0,1,1.328,1.328A1.328,1.328,0,0,1,18.153.157Z" transform="translate(1780.607 342.08)" fill="#00567d"/>
+      <path id="Trazado_87" data-name="Trazado 87" d="M18.153.157H-1.172A1.328,1.328,0,0,1-2.5-1.172,1.328,1.328,0,0,1-1.172-2.5H18.153a1.328,1.328,0,0,1,1.328,1.328A1.328,1.328,0,0,1,18.153.157Z" transform="translate(1780.607 329.327)" fill="#00567d"/>
+    </g>
+  </g>
+</svg>

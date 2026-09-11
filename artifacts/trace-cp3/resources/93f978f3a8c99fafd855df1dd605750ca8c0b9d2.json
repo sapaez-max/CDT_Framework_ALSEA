@@ -1,0 +1,7 @@
+{
+  "type": "error",
+  "status": 401,
+  "code": "The incoming token has expired",
+  "help_url": "/countries",
+  "message":"The incoming token has expired"
+}

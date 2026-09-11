@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="144" height="144" viewBox="0 0 144 144">
+  <defs>
+    <clipPath id="clip-Informatica">
+      <rect width="144" height="144"/>
+    </clipPath>
+  </defs>
+  <g id="Informatica" clip-path="url(#clip-Informatica)">
+    <rect width="144" height="144" fill="rgba(255,255,255,0)"/>
+    <g id="Rectángulo_36" data-name="Rectángulo 36" transform="translate(18 33.5)" fill="#fff" stroke="#00567d" stroke-width="4">
+      <rect width="109" height="81.565" rx="10" stroke="none"/>
+      <rect x="2" y="2" width="105" height="77.565" rx="8" fill="none"/>
+    </g>
+    <path id="Rectángulo_4" data-name="Rectángulo 4" d="M0,0H10a5,5,0,0,1,5,5V71.565a5,5,0,0,1-5,5H0a0,0,0,0,1,0,0V0A0,0,0,0,1,0,0Z" transform="translate(109 35.5)" fill="#6bc4e8"/>
+    <g id="Rectángulo_2" data-name="Rectángulo 2" transform="translate(18 33.5)" fill="none" stroke="#00567d" stroke-width="5">
+      <rect width="109" height="81.565" rx="10" stroke="none"/>
+      <rect x="2.5" y="2.5" width="104" height="76.565" rx="7.5" fill="none"/>
+    </g>
+    <line id="Línea_8" data-name="Línea 8" x1="37" transform="translate(54.5 122.5)" fill="none" stroke="#00567d" stroke-linecap="round" stroke-width="5"/>
+    <g id="Rectángulo_39" data-name="Rectángulo 39" transform="translate(101.565 21.874) rotate(90)" fill="#fff" stroke="#00567d" stroke-width="5">
+      <rect width="71.252" height="57.565" rx="7" stroke="none"/>
+      <rect x="2.5" y="2.5" width="66.252" height="52.565" rx="4.5" fill="none"/>
+    </g>
+    <path id="Trazado_86" data-name="Trazado 86" d="M36.368,0H0" transform="translate(54.5 57.5)" fill="none" stroke="#00567d" stroke-linecap="round" stroke-width="5"/>
+    <path id="Trazado_88" data-name="Trazado 88" d="M36.368,0H0" transform="translate(54.5 69.5)" fill="none" stroke="#00567d" stroke-linecap="round" stroke-width="5"/>
+    <path id="Trazado_87" data-name="Trazado 87" d="M36.368,0H0" transform="translate(54.5 45.5)" fill="none" stroke="#00567d" stroke-linecap="round" stroke-width="5"/>
+  </g>
+</svg>

@@ -35,10 +35,11 @@ por `AUTH_CAPTURE_PROFILE_PATH`, que debe permanecer dentro de `.auth`. Si Chrom
 no se encuentra en una ruta habitual, se configura su ejecutable mediante
 `BROWSER_EXECUTABLE_PATH`.
 
-Antes de abrir el navegador, el setup valida la estructura y la expiracion de los
-tokens Cognito guardados. Una sesion vencida o con menos de un minuto de vigencia
-restante falla con un mensaje que solicita ejecutar `npm run auth:manual`. El margen
-se configura mediante `AUTH_MINIMUM_VALIDITY_MS`.
+Antes de ejecutar la suite, `globalSetup` valida la estructura y la expiracion de
+los tokens Cognito guardados sin reportarlo como un caso de prueba adicional. Una
+sesion vencida o con menos de un minuto de vigencia restante falla con un mensaje
+que solicita ejecutar `npm run auth:manual`. El margen se configura mediante
+`AUTH_MINIMUM_VALIDITY_MS`.
 
 `.auth/admin.json` contiene cookies y almacenamiento autenticado. Esta protegido
 por `.gitignore` y no debe copiarse, compartirse ni versionarse.
@@ -49,29 +50,37 @@ Los casos CP1, CP13, CP25 y CP37 validan que Gmail reciba un correo nuevo de
 `no-reply@grupoalsea.com.mx` con asunto `Descarga de la plantilla Desarrollo`.
 El cuerpo debe contener el pais, la marca, la sucursal y el tipo de menu
 seleccionados. El primer adjunto `.xls` o `.xlsx` se guarda en
-`artifacts/downloads/<CP>/` sin inspeccionar su contenido. La espera maxima se
-configura mediante `GMAIL_POLL_TIMEOUT_MS` y es de cinco minutos por defecto.
+`artifacts/downloads/<CP>/`; si hay varios adjuntos Excel, el framework exige una
+coincidencia unica por nombre antes de descargar. La espera maxima se configura
+mediante `GMAIL_POLL_TIMEOUT_MS` y es de cinco minutos por defecto.
 
-Los casos CP2, CP14, CP26 y CP38 toman respectivamente las plantillas de CP1,
-CP13, CP25 y CP37. Cada caso valida que `Items`, `GrupoModificador` y
-`Modificadores` tengan datos relacionados, selecciona el primer agregador
-configurado disponible y edita una copia sin alterar la descarga original. La
-copia se guarda en `artifacts/edited/<CP>/`. El reporte incluye la plantilla
-editada y anotaciones con el producto, grupo, modificadores, agregador, celdas y
-valores cambiados. La validacion de horarios de Vigencia queda fuera de estos
-casos hasta confirmar la regla con el cliente.
+Antes de solicitar la plantilla se captura una linea base de correos coincidentes.
+El polling solo acepta mensajes nuevos que no existian en esa linea base y valida
+remitente, asunto, cuerpo y adjunto. Antes de guardar una descarga se eliminan solo
+los Excel previos de `artifacts/downloads/<CP>/`, por lo que cada caso conserva
+un unico resultado vigente. El reporte adjunta un JSON seguro con `messageId`,
+`threadId`, remitente, asunto, fecha, adjunto, ruta guardada y validaciones; tambien
+incluye evidencia HTML legible y el Excel recibido. Nunca se adjuntan
+`credentials.json`, `token.json` ni tokens OAuth.
 
-Los casos de edicion requieren que exista la descarga del caso anterior. Para
-ejecutar una pareja en orden, se usan comandos separados:
+Los bloques implementados siguen una cadena de cuatro casos por marca:
+descarga, edicion, carga de filtros y carga de menu. CP2, CP14, CP26 y CP38 toman
+respectivamente las plantillas de CP1, CP13, CP25 y CP37, limpian solo su carpeta,
+copian el Excel anterior a `artifacts/downloads/<CP>/` y editan esa copia. CP3,
+CP15, CP27 y CP39 copian el resultado de la edicion a su propia carpeta antes de
+cargar filtros. CP4, CP16, CP28 y CP40 copian el resultado del caso de filtros
+como referencia trazable del bloque antes de cargar menu. Si un caso requiere un
+Excel anterior y no existe exactamente uno, el framework falla con un mensaje
+descriptivo en lugar de elegir un archivo arbitrariamente.
 
-```powershell
-npx playwright test tests/e2e/ordenamiento-gpo-mod/CP13/CP13.spec.ts
-npx playwright test tests/e2e/ordenamiento-gpo-mod/CP14/CP14.spec.ts
-```
-
-Los casos de edicion se ejecutan en el proyecto `excel`, sin abrir navegador ni
-ejecutar el setup de autenticacion. Por ello no generan videos o capturas vacias;
-su evidencia es la plantilla adjunta y las anotaciones del reporte.
+Playwright separa estos casos en proyectos por etapa:
+`ordenamiento-descarga`, `ordenamiento-edicion`, `ordenamiento-carga-filtros` y
+`ordenamiento-carga-menu`. Cada CP puede ejecutarse de forma individual; la
+relacion entre casos es solo de artefacto. Si se ejecuta CP2, CP3 o CP4 sin que
+exista exactamente un Excel del caso anterior, el helper de artefactos falla con
+un mensaje descriptivo en lugar de ejecutar automaticamente el CP previo. La
+validacion de horarios de Vigencia queda fuera de estos casos hasta confirmar la
+regla con el cliente.
 
 Las rutas de `credentials.json` y `token.json` se configuran en `.env` mediante
 `GOOGLE_CREDENTIALS_PATH` y `GOOGLE_TOKEN_PATH`. Estos archivos contienen secretos

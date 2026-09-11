@@ -1,4 +1,5 @@
 import { fileTest as test, type TestInfo } from '@fixtures/base.fixture';
+import { excelContentType } from '@src/reporting/email-evidence';
 import { editDownloadedTemplate } from '@utils/template-editor';
 import type { TemplateEditCase } from './casos.data';
 
@@ -16,8 +17,9 @@ export async function ejecutarEdicionPlantilla(
   );
 
   testInfo.annotations.push(
-    { type: 'Plantilla de entrada', description: result.inputPath },
-    { type: 'Plantilla editada', description: result.outputPath },
+    { type: 'Plantilla origen', description: result.sourcePath },
+    { type: 'Copia de trabajo', description: result.inputPath },
+    { type: 'Plantilla resultado', description: result.outputPath },
     { type: 'Producto', description: result.itemId },
     { type: 'Grupo modificador', description: result.groupId },
     { type: 'Modificadores', description: result.modifierIds.join(', ') },
@@ -34,7 +36,7 @@ export async function ejecutarEdicionPlantilla(
   await test.step('Comprobar que la copia conserva las hojas y los cambios realizados', async () => {
     await testInfo.attach(`plantilla-editada-${caseData.id}`, {
       path: result.outputPath,
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      contentType: excelContentType(result.outputPath),
     });
   });
 }

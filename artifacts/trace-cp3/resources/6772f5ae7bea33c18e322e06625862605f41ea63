@@ -1,0 +1,314 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: ordenamiento-gpo-mod\CP3\CP3.spec.ts >> @catalogo @menu @administracion @carga-filtros @ordenamiento-gpo-mod @CP3 >> @CP3 CP3 - Cargar filtros para un nuevo menu - Starbucks
+- Location: tests\e2e\ordenamiento-gpo-mod\CP3\CP3.spec.ts:6:7
+
+# Error details
+
+```
+Error: El portal debe confirmar que la carga de filtros fue iniciada correctamente
+
+expect(locator).toHaveCount(expected) failed
+
+Locator:  locator('[role="alert"]:visible').filter({ hasText: /filtros|correo|enviad[ao]|cargad[ao]|[eé]xito|correctamente/i })
+Expected: 1
+Received: 0
+Timeout:  15000ms
+
+Call log:
+  - El portal debe confirmar que la carga de filtros fue iniciada correctamente with timeout 15000ms
+  - waiting for locator('[role="alert"]:visible').filter({ hasText: /filtros|correo|enviad[ao]|cargad[ao]|[eé]xito|correctamente/i })
+    33 × locator resolved to 0 elements
+       - unexpected value "0"
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e8]:
+  - generic [ref=e10]:
+    - link [ref=e12] [cursor=pointer]:
+      - /url: /landing/
+    - generic [ref=e14]:
+      - paragraph [ref=e16]:
+        - generic [ref=e17]: mcolin@soaint.com
+      - button "appstore" [ref=e19] [cursor=pointer]:
+        - img "appstore" [ref=e20]:
+          - img [ref=e21]
+  - main [ref=e25]:
+    - heading [level=6] [ref=e26]
+    - generic [ref=e30]:
+      - generic [ref=e34]:
+        - generic [ref=e36]:
+          - img [ref=e39]
+          - heading "MEXICO" [level=6] [ref=e41]
+        - generic [ref=e43]:
+          - heading "|" [level=4] [ref=e45]
+          - img [ref=e48]
+          - heading "STARBUCKS" [level=6] [ref=e50]
+        - generic [ref=e52]:
+          - heading "|" [level=4] [ref=e54]
+          - img [ref=e57]
+          - heading "UBER EATS" [level=6] [ref=e59]
+      - generic [ref=e61]:
+        - tablist [ref=e62]:
+          - generic [ref=e64]:
+            - tab "Cargar filtro" [selected] [ref=e66] [cursor=pointer]
+            - tab "Consulta de items" [ref=e68] [cursor=pointer]
+        - tabpanel "Cargar filtro" [ref=e71]:
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e84] [cursor=pointer]:
+                - generic [ref=e85]:
+                  - combobox [ref=e87]
+                  - generic "MEXICO" [ref=e88]
+                - generic:
+                  - img:
+                    - img
+              - generic [ref=e95] [cursor=pointer]:
+                - generic [ref=e96]:
+                  - combobox [ref=e98]
+                  - generic "STARBUCKS" [ref=e99]
+                - generic:
+                  - img:
+                    - img
+              - generic [ref=e106] [cursor=pointer]:
+                - generic [ref=e107]:
+                  - combobox [ref=e109]
+                  - generic "UBER EATS" [ref=e110]
+                - generic:
+                  - img:
+                    - img
+              - generic [ref=e122]:
+                - generic:
+                  - img "file":
+                    - img
+                - generic "STARBUCKS_Delivery BIS_Desarrollo_EDITADO_CP2.xlsx" [ref=e123]
+                - button "delete" [ref=e125] [cursor=pointer]:
+                  - img "delete" [ref=e126]:
+                    - img [ref=e127]
+              - generic [ref=e135] [cursor=pointer]:
+                - generic [ref=e136]:
+                  - combobox [ref=e138]
+                  - generic "Delivery BIS" [ref=e139]
+                - generic:
+                  - img:
+                    - img
+                - img [ref=e141]:
+                  - img [ref=e142]
+              - generic [ref=e150] [cursor=pointer]:
+                - generic [ref=e151]:
+                  - combobox [ref=e153]
+                  - generic "Nuevo menú" [ref=e154]
+                - generic:
+                  - img:
+                    - img
+                - img [ref=e156]:
+                  - img [ref=e157]
+              - generic [ref=e165] [cursor=pointer]:
+                - generic [ref=e166]:
+                  - combobox [ref=e168]
+                  - generic "No" [ref=e169]
+                - generic:
+                  - img:
+                    - img
+                - img [ref=e171]:
+                  - img [ref=e172]
+              - textbox "Ingresa una descripción" [ref=e180]: Carga de filtros CP3
+            - button "upload Cargar Filtros" [active] [ref=e188] [cursor=pointer]:
+              - img "upload" [ref=e189]:
+                - img [ref=e190]
+              - generic [ref=e192]: Cargar Filtros
+```
+
+# Test source
+
+```ts
+  491 |       }),
+  492 |     );
+  493 |   }
+  494 | 
+  495 |   private searchQueriesForValue(value: string): string[] {
+  496 |     return Array.from(new Set([
+  497 |       value,
+  498 |       ...this.significantTerms(value).filter((term) => !/^\d+$/.test(term)),
+  499 |       ...this.significantTerms(value).filter((term) => /^\d+$/.test(term)),
+  500 |     ]));
+  501 |   }
+  502 | 
+  503 |   private significantTerms(value: string): string[] {
+  504 |     return normalizeForComparison(value)
+  505 |       .replace(/[()]/g, ' ')
+  506 |       .split(' ')
+  507 |       .filter((term) => term.length > 1);
+  508 |   }
+  509 | 
+  510 |   private async selectNativeOption(field: Locator, values: string[]): Promise<void> {
+  511 |     for (const value of values) {
+  512 |       const selected = await field
+  513 |         .selectOption({ label: value })
+  514 |         .then(() => true)
+  515 |         .catch(async () => field.selectOption(value).then(() => true).catch(() => false));
+  516 | 
+  517 |       if (selected) return;
+  518 |     }
+  519 | 
+  520 |     throw new Error(`No se encontro ninguna opcion nativa para: ${values.join(', ')}`);
+  521 |   }
+  522 | 
+  523 |   private async uploadTemplateFile(filePath: string): Promise<void> {
+  524 |     const fileInput = this.page.locator('input[type="file"]').first();
+  525 | 
+  526 |     await expect(fileInput, 'Debe existir el control para adjuntar la plantilla editada').toHaveCount(1);
+  527 |     await fileInput.setInputFiles(filePath);
+  528 |   }
+  529 | 
+  530 |   private async fieldContainsValue(field: Locator, values: string[]): Promise<boolean> {
+  531 |     const currentText = await field.evaluate((element) => {
+  532 |       const htmlElement = element as HTMLElement;
+  533 |       const input = element instanceof HTMLInputElement ? element : htmlElement.querySelector('input');
+  534 |       const antSelect = htmlElement.closest('.ant-select') as HTMLElement | null;
+  535 | 
+  536 |       return [
+  537 |         htmlElement.textContent,
+  538 |         input?.value,
+  539 |         input?.getAttribute('aria-label'),
+  540 |         input?.getAttribute('placeholder'),
+  541 |         antSelect?.textContent,
+  542 |       ].filter(Boolean).join(' ');
+  543 |     }).catch(() => '');
+  544 |     const normalizedCurrentText = normalizeForComparison(currentText || '');
+  545 | 
+  546 |     return values.some((value) => normalizedCurrentText.includes(normalizeForComparison(value)));
+  547 |   }
+  548 | 
+  549 |   private visibleDropdown(): Locator {
+  550 |     return this.page.locator('.ant-select-dropdown:visible').first();
+  551 |   }
+  552 | 
+  553 |   private visibleAntOptions(): Locator {
+  554 |     return this.page.locator('.ant-select-dropdown:visible .ant-select-item-option');
+  555 |   }
+  556 | 
+  557 |   private visibleRoleOptions(): Locator {
+  558 |     return this.page.locator('[role="listbox"]:visible [role="option"]:visible');
+  559 |   }
+  560 | 
+  561 |   private visibleOptionsForMatching(): Locator {
+  562 |     return this.visibleAntOptions().or(this.visibleRoleOptions());
+  563 |   }
+  564 | 
+  565 |   private locatorForExactOption(option: VisibleOptionData): Locator {
+  566 |     const candidates = optionValues(option).filter(Boolean);
+  567 |     const visibleOptions = this.visibleOptionsForMatching();
+  568 |     const locators = candidates.map((candidate) => {
+  569 |       const pattern = exactTextPattern(candidate);
+  570 | 
+  571 |       return visibleOptions
+  572 |         .filter({ hasText: pattern })
+  573 |         .or(this.page.locator(`.ant-select-dropdown:visible .ant-select-item-option[title=${cssString(candidate)}]`))
+  574 |         .or(this.page.locator(`[role="listbox"]:visible [role="option"][aria-label=${cssString(candidate)}]:visible`));
+  575 |     });
+  576 | 
+  577 |     return locators.reduce((locator, next) => locator.or(next));
+  578 |   }
+  579 | 
+  580 |   private successMessage(pattern: RegExp): Locator {
+  581 |     return this.page
+  582 |       .getByRole('alert')
+  583 |       .filter({ hasText: pattern })
+  584 |       .or(this.page.getByText(pattern))
+  585 |       .first();
+  586 |   }
+  587 | 
+  588 |   private async expectVisibleNotification(message: RegExp, assertionMessage: string): Promise<void> {
+  589 |     const notification = this.visibleNotification(message);
+  590 | 
+> 591 |     await expect(notification, assertionMessage).toHaveCount(1);
+      |                                                  ^ Error: El portal debe confirmar que la carga de filtros fue iniciada correctamente
+  592 |     await expect(notification, assertionMessage).toBeVisible();
+  593 |   }
+  594 | 
+  595 |   private visibleNotification(message: RegExp): Locator {
+  596 |     return this.page.locator('[role="alert"]:visible').filter({ hasText: message });
+  597 |   }
+  598 | 
+  599 |   private rootApplicationMenu(): Locator {
+  600 |     return this.page.locator('ul[role="menu"].ant-menu-root').filter({
+  601 |       hasText: /Usuarios|Men[uú]|Carga Men[uú]/i,
+  602 |     }).first();
+  603 |   }
+  604 | 
+  605 |   private visibleSubmenuItem(name: RegExp): Locator {
+  606 |     return this.page.locator('.ant-menu-submenu-popup:visible [role="menuitem"]')
+  607 |       .filter({ hasText: name })
+  608 |       .first();
+  609 |   }
+  610 | }
+  611 | 
+  612 | function escapeRegExp(value: string): string {
+  613 |   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  614 | }
+  615 | 
+  616 | function exactTextPattern(value: string): RegExp {
+  617 |   return new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, 'i');
+  618 | }
+  619 | 
+  620 | function cssString(value: string): string {
+  621 |   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  622 | }
+  623 | 
+  624 | function optionValues(option: VisibleOptionData): string[] {
+  625 |   return [option.text, option.title, option.ariaLabel].filter(Boolean);
+  626 | }
+  627 | 
+  628 | function optionDisplayName(option: VisibleOptionData): string {
+  629 |   return option.text || option.title || option.ariaLabel;
+  630 | }
+  631 | 
+  632 | function matchesExactTrailingCode(optionText: string, value: string): boolean {
+  633 |   const normalizedValue = normalizeForComparison(value);
+  634 |   const normalizedText = normalizeForComparison(optionText);
+  635 |   const lastDashIndex = normalizedText.lastIndexOf('-');
+  636 | 
+  637 |   if (lastDashIndex === -1) {
+  638 |     return false;
+  639 |   }
+  640 | 
+  641 |   return normalizedText.slice(lastDashIndex + 1).trim() === normalizedValue;
+  642 | }
+  643 | 
+  644 | function normalizeForComparison(value: string): string {
+  645 |   return value
+  646 |     .normalize('NFD')
+  647 |     .replace(/[\u0300-\u036f]/g, '')
+  648 |     .replace(/\s+/g, ' ')
+  649 |     .trim()
+  650 |     .toUpperCase();
+  651 | }
+  652 | 
+  653 | class NonRetryableAutocompleteError extends Error {
+  654 |   constructor(message: string) {
+  655 |     super(message);
+  656 |     this.name = 'NonRetryableAutocompleteError';
+  657 |   }
+  658 | }
+  659 | 
+  660 | function isRetryableAutocompleteError(error: unknown): boolean {
+  661 |   if (error instanceof NonRetryableAutocompleteError) {
+  662 |     return false;
+  663 |   }
+  664 | 
+  665 |   const message = error instanceof Error ? error.message : String(error);
+  666 | 
+  667 |   return /Timeout|not visible|detached|closed|not attached|Element is not attached|intercepts pointer events|Target page, context or browser has been closed/i.test(message);
+  668 | }
+  669 | 
+```

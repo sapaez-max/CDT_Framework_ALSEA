@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76" viewBox="0 0 76 76">
+  <g id="horarios" transform="translate(-6910 -3387)">
+    <g id="Rectángulo_1276" data-name="Rectángulo 1276" transform="translate(6910 3387)" fill="#fff" stroke="#707070" stroke-width="1" opacity="0">
+      <rect width="76" height="76" stroke="none"/>
+      <rect x="0.5" y="0.5" width="75" height="75" fill="none"/>
+    </g>
+    <g id="Grupo_16595" data-name="Grupo 16595" transform="translate(6923 3399.871)">
+      <path id="Trazado_78" data-name="Trazado 78" d="M54.653,37.361A24.079,24.079,0,1,0,30.574,61.44,24.079,24.079,0,0,0,54.653,37.361" transform="translate(-5.445 -12.232)" fill="#fff"/>
+      <path id="Trazado_79" data-name="Trazado 79" d="M106.405-.016c-2.369,0-5.551-.193-7.656.754,7.519,3.382,13.808,12.96,13.808,23.34S107.123,44.251,99.6,47.633c2.1.947,4.432.541,6.8.541,9.825-3.379,19.646-10.809,19.646-24.1s-9.009-21.4-19.646-24.094" transform="translate(-76.143 1.035)" fill="#52b9e4"/>
+      <path id="Trazado_80" data-name="Trazado 80" d="M6.494,37.361a24.079,24.079,0,1,0,24.08-24.08,24.079,24.079,0,0,0-24.08,24.08" transform="translate(-5.444 -12.231)" fill="none"/>
+      <path id="Elipse_3" data-name="Elipse 3" d="M25.1,0a25.1,25.1,0,0,1,9.769,48.221A25.1,25.1,0,0,1,15.328,1.973,24.941,24.941,0,0,1,25.1,0Zm0,48.159A23.068,23.068,0,0,0,34.073,3.847a23.068,23.068,0,0,0-17.953,42.5A22.916,22.916,0,0,0,25.1,48.159Z" transform="matrix(0.001, -1, 1, 0.001, 0, 50.194)" fill="#00466b"/>
+      <path id="Línea_36" data-name="Línea 36" d="M-.982,18.353A1.018,1.018,0,0,1-2,17.335V-.982A1.018,1.018,0,0,1-.982-2,1.018,1.018,0,0,1,.035-.982V17.335A1.018,1.018,0,0,1-.982,18.353Z" transform="translate(26.191 8.008)" fill="#00466b"/>
+      <path id="Línea_37" data-name="Línea 37" d="M16.317.035H-.982A1.018,1.018,0,0,1-2-.982,1.018,1.018,0,0,1-.982-2h17.3A1.018,1.018,0,0,1,17.335-.982,1.018,1.018,0,0,1,16.317.035Z" transform="translate(26.191 26.326)" fill="#00466b"/>
+    </g>
+  </g>
+</svg>

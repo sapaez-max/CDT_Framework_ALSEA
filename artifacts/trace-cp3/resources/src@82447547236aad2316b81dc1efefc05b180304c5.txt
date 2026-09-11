@@ -1,0 +1,9 @@
+import { test } from '@fixtures/base.fixture';
+import { cp3Data } from '../_shared/casos.data';
+import { ejecutarCargaFiltros } from '../_shared/carga-filtros-flow';
+
+test.describe('@catalogo @menu @administracion @carga-filtros @ordenamiento-gpo-mod @CP3', { tag: cp3Data.brandTag }, () => {
+  test(`@CP3 CP3 - ${cp3Data.title}`, async ({ page }, testInfo) => {
+    await ejecutarCargaFiltros(page, cp3Data, testInfo);
+  });
+});

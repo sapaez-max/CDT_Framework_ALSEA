@@ -28,6 +28,21 @@ export type MenuLoadFormData = {
   expectedMessage: RegExp;
 };
 
+export type FilterLoadFormData = {
+  country: string | string[];
+  brand: string | string[];
+  baseBranch?: string | string[];
+  branch?: string | string[];
+  aggregator?: string | string[];
+  menuType: string | string[];
+  childBranch?: string | string[];
+  childMenuType?: string | string[];
+  loadType: string | string[];
+  versionMenu: string | string[];
+  description: string;
+  expectedMessage: RegExp;
+};
+
 export class MenuAdministrationPage extends BasePage {
   constructor(page: Page) {
     super(page);
@@ -81,6 +96,13 @@ export class MenuAdministrationPage extends BasePage {
     await this.openLoadMenuPage();
   }
 
+  async openFilterLoad(): Promise<void> {
+    await this.openApplicationLauncher();
+    await this.openMenuSection();
+    await this.openAdministrationPage();
+    await this.openFilterLoadPage();
+  }
+
   async loadMenu(caseData: MenuLoadFormData): Promise<void> {
     await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
     await this.selectField(/Marca|Marcas/i, caseData.brand);
@@ -100,6 +122,46 @@ export class MenuAdministrationPage extends BasePage {
       caseData.expectedMessage,
       'El portal debe confirmar que la carga del menu fue iniciada correctamente',
     );
+  }
+
+  async loadFilters(caseData: FilterLoadFormData, filePath: string): Promise<void> {
+    await this.selectField(/Pa[iÃ­]s|Pa[iÃ­]ses/i, caseData.country);
+    await this.selectField(/Marca|Marcas/i, caseData.brand);
+
+    if (caseData.aggregator) {
+      await this.selectField(/Agregador|Agregadores/i, caseData.aggregator);
+    }
+
+    await this.selectField(/Tipo de men[uÃº]|Tipo men[uÃº]/i, caseData.childMenuType ?? caseData.menuType);
+
+    await this.selectField(/Tipo de carga/i, caseData.loadType);
+    await this.selectField(/Versionar men[uÃº]|Versionar menu/i, caseData.versionMenu);
+
+    const description = this.page.locator('#description').or(this.page.getByPlaceholder(/Ingresa una descripci[oÃ³]n/i)).first();
+    await expect(description, 'Debe existir el campo de descripcion para la carga de filtros').toBeVisible();
+    await description.fill(caseData.description);
+
+    await this.uploadTemplateFile(filePath);
+
+    const button = this.page.getByRole('button', { name: /Cargar filtros/i }).first();
+    await expect(button, 'Debe estar disponible el boton Cargar filtros').toBeEnabled();
+    const [response] = await Promise.all([
+      this.page.waitForResponse((candidate) =>
+        candidate.request().method() === 'POST'
+        && /\/menudelivery\/filters\b/i.test(candidate.url()),
+      ),
+      button.click(),
+    ]);
+
+    expect(
+      response.ok(),
+      `El servicio de carga de filtros debe responder correctamente. Status: ${response.status()}`,
+    ).toBe(true);
+
+    const notification = this.visibleNotification(caseData.expectedMessage);
+    if (await notification.count()) {
+      await expect(notification, 'El portal debe mostrar la notificacion de carga de filtros').toBeVisible();
+    }
   }
 
   private async openApplicationLauncher(): Promise<void> {
@@ -175,6 +237,18 @@ export class MenuAdministrationPage extends BasePage {
     ).toBeVisible();
   }
 
+  private async openFilterLoadPage(): Promise<void> {
+    const filterLoadLink = this.page.getByRole('link', { name: /Carga de filtros|Cargar filtros/i }).first();
+
+    await expect(filterLoadLink, 'Debe existir el link Carga de filtros en Administracion de Menu').toBeVisible();
+    await filterLoadLink.click();
+
+    await expect(
+      this.page.getByRole('button', { name: /Cargar filtros/i }).first(),
+      'Debe mostrarse el formulario de carga de filtros',
+    ).toBeVisible();
+  }
+
   private async clickNavigationItem(name: RegExp): Promise<void> {
     const item = this.page
       .getByRole('button', { name })
@@ -237,6 +311,14 @@ export class MenuAdministrationPage extends BasePage {
       return this.antSelectByInputId('menuType');
     }
 
+    if (this.matchesLabel(label, ['Tipo de carga'])) {
+      return this.filterLoadAntSelectAt(4);
+    }
+
+    if (this.matchesLabel(label, ['Versionar menu', 'Versionar menÃº'])) {
+      return this.filterLoadAntSelectAt(5);
+    }
+
     return this.page.locator('__no_known_ant_field__');
   }
 
@@ -244,6 +326,10 @@ export class MenuAdministrationPage extends BasePage {
     return this.page.locator('.ant-select').filter({
       has: this.page.locator(`input#${inputId}`),
     }).first();
+  }
+
+  private filterLoadAntSelectAt(index: number): Locator {
+    return this.page.locator('.ant-tabs-tabpane-active .ant-select:visible').nth(index);
   }
 
   private matchesLabel(label: RegExp, candidates: string[]): boolean {
@@ -445,8 +531,27 @@ export class MenuAdministrationPage extends BasePage {
     throw new Error(`No se encontro ninguna opcion nativa para: ${values.join(', ')}`);
   }
 
+  private async uploadTemplateFile(filePath: string): Promise<void> {
+    const fileInput = this.page.locator('input[type="file"]').first();
+
+    await expect(fileInput, 'Debe existir el control para adjuntar la plantilla editada').toHaveCount(1);
+    await fileInput.setInputFiles(filePath);
+  }
+
   private async fieldContainsValue(field: Locator, values: string[]): Promise<boolean> {
-    const currentText = await field.textContent().catch(() => '');
+    const currentText = await field.evaluate((element) => {
+      const htmlElement = element as HTMLElement;
+      const input = element instanceof HTMLInputElement ? element : htmlElement.querySelector('input');
+      const antSelect = htmlElement.closest('.ant-select') as HTMLElement | null;
+
+      return [
+        htmlElement.textContent,
+        input?.value,
+        input?.getAttribute('aria-label'),
+        input?.getAttribute('placeholder'),
+        antSelect?.textContent,
+      ].filter(Boolean).join(' ');
+    }).catch(() => '');
     const normalizedCurrentText = normalizeForComparison(currentText || '');
 
     return values.some((value) => normalizedCurrentText.includes(normalizeForComparison(value)));

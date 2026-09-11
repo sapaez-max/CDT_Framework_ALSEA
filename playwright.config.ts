@@ -1,9 +1,17 @@
 ﻿import { defineConfig, devices } from '@playwright/test';
 import { env } from './src/config/env';
-import { fileEditTestPattern, getRoleProjectConfigs } from './src/config/roles';
+import {
+  chainedDownloadTestPattern,
+  chainedEditTestPattern,
+  chainedFilterLoadTestPattern,
+  chainedMenuLoadTestPattern,
+  chainedCoreViewerTestPattern,
+  getRoleProjectConfigs,
+} from './src/config/roles';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './setup/global-auth-check.ts',
   fullyParallel: false,
   timeout: 60_000,
   expect: {
@@ -32,14 +40,44 @@ export default defineConfig({
   projects: [
     ...getRoleProjectConfigs(),
     {
-      name: 'excel',
-      testMatch: fileEditTestPattern,
+      name: 'ordenamiento-descarga',
+      testMatch: chainedDownloadTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
     },
     {
-      name: 'setup',
-      testDir: './setup',
-      testMatch: /.*\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'], storageState: { cookies: [], origins: [] }, trace: 'off', screenshot: 'off', video: 'off' },
+      name: 'ordenamiento-edicion',
+      testMatch: chainedEditTestPattern,
+    },
+    {
+      name: 'ordenamiento-carga-filtros',
+      testMatch: chainedFilterLoadTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-carga-menu',
+      testMatch: chainedMenuLoadTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-visor-core',
+      testMatch: chainedCoreViewerTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
     },
   ],
 });
