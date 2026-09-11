@@ -2,13 +2,15 @@ import path from 'path';
 import { devices, type Project } from '@playwright/test';
 import { env } from './env';
 
-export const fileEditTestPattern = /ordenamiento-gpo-mod[\\/](?:CP2|CP14|CP26|CP38)[\\/].*\.spec\.ts/;
-export const chainedDownloadTestPattern = /ordenamiento-gpo-mod[\\/](?:CP1|CP13|CP25|CP37)[\\/].*\.spec\.ts/;
+const scenarioPath = 'ordenamiento-gpo-mod[\\\\/]scenarios[\\\\/]';
+
+export const fileEditTestPattern = new RegExp(`${scenarioPath}02-edit-template\\.spec\\.ts`);
+export const chainedDownloadTestPattern = new RegExp(`${scenarioPath}01-download-template\\.spec\\.ts`);
 export const chainedEditTestPattern = fileEditTestPattern;
-export const chainedFilterLoadTestPattern = /ordenamiento-gpo-mod[\\/](?:CP3|CP15|CP27|CP39)[\\/].*\.spec\.ts/;
-export const chainedMenuLoadTestPattern = /ordenamiento-gpo-mod[\\/](?:CP4|CP16|CP28|CP40)[\\/].*\.spec\.ts/;
-export const chainedCoreViewerTestPattern = /ordenamiento-gpo-mod[\\/](?:CP5|CP17|CP29|CP41)[\\/].*\.spec\.ts/;
-export const chainedOrdenamientoTestPattern = /ordenamiento-gpo-mod[\\/](?:CP1|CP2|CP3|CP4|CP5|CP13|CP14|CP15|CP16|CP17|CP25|CP26|CP27|CP28|CP29|CP37|CP38|CP39|CP40|CP41)[\\/].*\.spec\.ts/;
+export const chainedFilterLoadTestPattern = new RegExp(`${scenarioPath}03-upload-filters\\.spec\\.ts`);
+export const chainedMenuLoadTestPattern = new RegExp(`${scenarioPath}04-upload-menu\\.spec\\.ts`);
+export const chainedCoreViewerTestPattern = new RegExp(`${scenarioPath}05-validate-visor\\.spec\\.ts`);
+export const chainedOrdenamientoTestPattern = new RegExp(`${scenarioPath}.*\\.spec\\.ts`);
 
 export function getRoleProjectConfigs(): Project[] {
   return [{

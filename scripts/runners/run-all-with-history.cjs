@@ -10,6 +10,7 @@ fs.mkdirSync(historyDir, { recursive: true });
 const result = spawnSync('npx', ['playwright', 'test'], {
   stdio: 'inherit',
   shell: process.platform === 'win32',
+  env: { ...process.env, ALSEA_RUN_ID: runId },
 });
 
 const summary = {

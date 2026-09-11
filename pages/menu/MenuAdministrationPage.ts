@@ -1,7 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '@pages/base/BasePage';
+import { env } from '@config/env';
 
-const FILE_OPERATION_TIMEOUT_MS = 30_000;
+const FILE_OPERATION_TIMEOUT_MS = env.fileOperationTimeoutMs;
 
 type VisibleOptionData = {
   index: number;

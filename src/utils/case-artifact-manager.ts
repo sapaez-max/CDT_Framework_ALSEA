@@ -6,22 +6,33 @@ export type CaseExcelCopy = {
   targetPath: string;
 };
 
+export type ArtifactScope = {
+  datasetId: string;
+  runId?: string;
+};
+
 const excelPattern = /\.xlsx?$/i;
 
-export function caseDownloadDirectory(caseId: string): string {
-  return path.resolve('artifacts', 'downloads', safeSegment(caseId));
+export function caseDownloadDirectory(caseId: string, scope: ArtifactScope): string {
+  return path.resolve(
+    'artifacts',
+    'runs',
+    safeSegment(scope.runId ?? process.env.ALSEA_RUN_ID ?? 'manual'),
+    safeSegment(caseId),
+    safeSegment(scope.datasetId),
+  );
 }
 
-export function prepareCaseDownloadDirectory(caseId: string): string {
-  const directory = caseDownloadDirectory(caseId);
+export function prepareCaseDownloadDirectory(caseId: string, scope: ArtifactScope): string {
+  const directory = caseDownloadDirectory(caseId, scope);
   fs.mkdirSync(directory, { recursive: true });
-  cleanCaseExcel(caseId);
+  cleanCaseExcel(caseId, scope);
 
   return directory;
 }
 
-export function cleanCaseExcel(caseId: string): void {
-  const directory = caseDownloadDirectory(caseId);
+export function cleanCaseExcel(caseId: string, scope: ArtifactScope): void {
+  const directory = caseDownloadDirectory(caseId, scope);
   if (!fs.existsSync(directory)) return;
 
   for (const file of fs.readdirSync(directory)) {
@@ -30,21 +41,37 @@ export function cleanCaseExcel(caseId: string): void {
     const filePath = path.join(directory, file);
     const stats = fs.statSync(filePath);
     if (stats.isFile()) {
-      fs.unlinkSync(filePath);
+      try {
+        fs.unlinkSync(filePath);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'EBUSY' || code === 'EPERM') {
+          throw new Error(
+            `No se pudo reemplazar el Excel anterior porque esta abierto o bloqueado por otra aplicacion: ${filePath}. Cierre Excel o la vista previa del archivo y vuelva a ejecutar el caso.`,
+            { cause: error },
+          );
+        }
+        throw error;
+      }
     }
   }
 }
 
-export function saveCaseExcel(caseId: string, filename: string, content: Buffer): string {
-  const directory = prepareCaseDownloadDirectory(caseId);
+export function saveCaseExcel(
+  caseId: string,
+  filename: string,
+  content: Buffer,
+  scope: ArtifactScope,
+): string {
+  const directory = prepareCaseDownloadDirectory(caseId, scope);
   const outputPath = path.join(directory, path.basename(filename));
   fs.writeFileSync(outputPath, content);
 
   return outputPath;
 }
 
-export function getLatestExcelForCase(caseId: string): string {
-  const directory = caseDownloadDirectory(caseId);
+export function getLatestExcelForCase(caseId: string, scope: ArtifactScope): string {
+  const directory = caseDownloadDirectory(caseId, scope);
   if (!fs.existsSync(directory)) {
     throw new Error(
       `${caseId} requiere un Excel generado previamente. No se encontro la carpeta: ${directory}. Ejecute primero el caso anterior o el bloque correspondiente.`,
@@ -73,12 +100,14 @@ export function getLatestExcelForCase(caseId: string): string {
 export function copyExcelFromPreviousCase({
   fromCase,
   toCase,
+  scope,
 }: {
   fromCase: string;
   toCase: string;
+  scope: ArtifactScope;
 }): CaseExcelCopy {
-  const sourcePath = getLatestExcelForCase(fromCase);
-  const directory = prepareCaseDownloadDirectory(toCase);
+  const sourcePath = getLatestExcelForCase(fromCase, scope);
+  const directory = prepareCaseDownloadDirectory(toCase, scope);
   const targetPath = path.join(directory, path.basename(sourcePath));
   fs.copyFileSync(sourcePath, targetPath);
 

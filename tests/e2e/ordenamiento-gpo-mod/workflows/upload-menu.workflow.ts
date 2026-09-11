@@ -1,0 +1,73 @@
+import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
+import { LoginPage } from '@pages/auth/LoginPage';
+import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
+import type { GmailClient } from '@src/integrations/google/gmail-client';
+import { excelContentType } from '@src/reporting/email-evidence';
+import type { MenuLoadCase } from '../data/types';
+import { ExcelService } from '../services/excel.service';
+import { GmailService } from '../services/gmail.service';
+import { attachGmailEvidence } from '../support/email-report';
+import {
+  annotateExecutionContext,
+  artifactScope,
+  createExecutionContext,
+  type ExecutionContext,
+} from '../support/execution-context';
+import { goToLanding } from '../support/navigation';
+
+export async function uploadMenuWorkflow(
+  page: Page,
+  caseData: MenuLoadCase,
+  testInfo: TestInfo,
+  gmailClient: GmailClient,
+): Promise<ExecutionContext> {
+  const context = createExecutionContext(caseData);
+  annotateExecutionContext(testInfo, context);
+  await goToLanding(page);
+  await new LoginPage(page).expectAuthenticated();
+
+  const prepared = await test.step(
+    `Copiar plantilla generada por ${caseData.sourceCaseId}`,
+    () => new ExcelService().copyFromCase(
+      caseData.sourceCaseId,
+      caseData.id,
+      artifactScope(context),
+    ),
+  );
+  context.files.uploaded = prepared.targetPath;
+  testInfo.annotations.push(
+    { type: 'Plantilla origen', description: prepared.sourcePath },
+    { type: 'Plantilla de referencia', description: prepared.targetPath },
+  );
+
+  const menuPage = new MenuAdministrationPage(page);
+  await menuPage.openMenuLoad();
+  const gmail = new GmailService(gmailClient);
+  const baseline = await test.step('Capturar linea base de Gmail', () =>
+    gmail.captureCaseBaseline());
+
+  const portalResult = await menuPage.loadMenu(caseData);
+  testInfo.annotations.push({
+    type: 'Resultado inicial del portal',
+    description: portalResult.status === 'endpoint-timeout'
+      ? `${portalResult.notification}. El resultado final se valida mediante Gmail.`
+      : portalResult.notification,
+  });
+
+  const email = await test.step('Esperar y validar correo de carga de menu', () =>
+    gmail.waitForCase(baseline, {
+      caseId: caseData.id,
+      subject: caseData.expectedEmailSubject,
+      bodyFields: caseData.expectedEmailBodyFields,
+      artifactScope: artifactScope(context),
+    }));
+  await attachGmailEvidence(testInfo, caseData, email);
+
+  expect(prepared.targetPath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(`plantilla-referencia-menu-${caseData.id}`, {
+    path: prepared.targetPath,
+    contentType: excelContentType(prepared.targetPath),
+  });
+  return context;
+}
+

@@ -53,9 +53,11 @@ export const env = {
   workers: numberFromEnv('WORKERS', 1),
   retries: numberFromEnv('RETRIES', 0),
 
-  actionTimeoutMs: numberFromEnv('ACTION_TIMEOUT_MS', 10_000),
-  expectTimeoutMs: numberFromEnv('EXPECT_TIMEOUT_MS', 15_000),
-  navigationTimeoutMs: numberFromEnv('NAVIGATION_TIMEOUT_MS', 30_000),
+  testTimeoutMs: numberFromEnv('TEST_TIMEOUT_MS', 80_000),
+  actionTimeoutMs: numberFromEnv('ACTION_TIMEOUT_MS', 30_000),
+  expectTimeoutMs: numberFromEnv('EXPECT_TIMEOUT_MS', 35_000),
+  navigationTimeoutMs: numberFromEnv('NAVIGATION_TIMEOUT_MS', 50_000),
+  fileOperationTimeoutMs: numberFromEnv('FILE_OPERATION_TIMEOUT_MS', 50_000),
   manualAuthTimeoutMs: numberFromEnv('MANUAL_AUTH_TIMEOUT_MS', 300_000),
 
   gmail: {

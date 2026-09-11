@@ -1,0 +1,79 @@
+import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
+import { LoginPage } from '@pages/auth/LoginPage';
+import { excelContentType } from '@src/reporting/email-evidence';
+import type { CoreViewerCase } from '../data/types';
+import { ExcelService } from '../services/excel.service';
+import {
+  annotateExecutionContext,
+  annotateSelectedEntities,
+  artifactScope,
+  createExecutionContext,
+  type ExecutionContext,
+} from '../support/execution-context';
+import { goToLanding } from '../support/navigation';
+import { validateCoreViewer } from '../validators/core-viewer.validator';
+
+export async function validateVisorWorkflow(
+  page: Page,
+  caseData: CoreViewerCase,
+  testInfo: TestInfo,
+  sourceContext?: ExecutionContext,
+): Promise<ExecutionContext> {
+  const context = createExecutionContext(caseData);
+  annotateExecutionContext(testInfo, context);
+  await test.step('Validar sesion autenticada', async () => {
+    await goToLanding(page);
+    await new LoginPage(page).expectAuthenticated();
+  });
+
+  const excel = new ExcelService();
+  const prepared = await test.step(
+    `Copiar plantilla generada por ${caseData.sourceCaseId}`,
+    () => excel.copyFromCase(caseData.sourceCaseId, caseData.id, artifactScope(context)),
+  );
+  const expectation = await test.step(
+    'Leer item, grupo y modificadores que deben validarse',
+    () => excel.readViewerExpectation(prepared.targetPath),
+  );
+
+  context.files.uploaded = prepared.sourcePath;
+  context.product = {
+    id: expectation.itemId,
+    name: expectation.itemName,
+  };
+  context.category = sourceContext?.category ?? { name: expectation.categoryName };
+  context.groupModifier = sourceContext?.groupModifier ?? {
+    id: expectation.groupId,
+    nameAfter: expectation.groupName,
+    descriptionAfter: expectation.groupDescription,
+  };
+  context.modifiers = sourceContext?.modifiers ?? expectation.modifiers.map(modifier => ({
+    id: modifier.id,
+    nameAfter: modifier.name,
+  }));
+  testInfo.annotations.push(
+    { type: 'Plantilla origen', description: prepared.sourcePath },
+    { type: 'Categoria', description: expectation.categoryName },
+    {
+      type: 'Precios del item',
+      description: expectation.itemPrices.map(price => `$${price.toFixed(2)}`).join(', ') || 'No informados',
+    },
+    { type: 'Daypart del item', description: expectation.itemDaypart ?? 'No informado' },
+    { type: 'Orden del grupo', description: String(expectation.groupOrder) },
+    {
+      type: 'Orden de modificadores',
+      description: expectation.modifiers.map(item => `${item.id}: ${item.order}`).join(', '),
+    },
+  );
+  annotateSelectedEntities(testInfo, context);
+
+  await test.step('Validar en Visor CORE los datos de la plantilla', () =>
+    validateCoreViewer(page, caseData, expectation, testInfo));
+
+  expect(prepared.targetPath, 'La plantilla validada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(`plantilla-visor-core-${caseData.id}`, {
+    path: prepared.targetPath,
+    contentType: excelContentType(prepared.targetPath),
+  });
+  return context;
+}

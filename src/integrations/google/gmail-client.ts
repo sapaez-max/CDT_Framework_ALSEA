@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { google, type gmail_v1 } from 'googleapis';
 import { env, validateGmailEnv } from '@config/env';
-import { saveCaseExcel } from '@utils/case-artifact-manager';
+import { saveCaseExcel, type ArtifactScope } from '@utils/case-artifact-manager';
 
 type OAuthClientDefinition = {
   client_id?: string;
@@ -34,6 +34,7 @@ export type TemplateEmailExpectation = {
   brand: string | string[];
   branch: string | string[];
   menuType: string | string[];
+  artifactScope: ArtifactScope;
 };
 
 export type EmailBodyExpectation = {
@@ -47,6 +48,7 @@ export type CaseEmailExpectation = {
   subject: string | RegExp;
   bodyFields: EmailBodyExpectation[];
   requireExcelAttachment?: boolean;
+  artifactScope: ArtifactScope;
 };
 
 export type EmailValidationResult = {
@@ -134,6 +136,7 @@ export class GmailClient {
         { label: 'Tipo menu', values: expectation.menuType },
       ],
       requireExcelAttachment: true,
+      artifactScope: expectation.artifactScope,
     });
   }
 
@@ -229,7 +232,12 @@ export class GmailClient {
       : undefined;
 
     const outputPath = attachment
-      ? saveCaseExcel(expectation.caseId, attachment.filename, await this.readAttachment(message.id, attachment))
+      ? saveCaseExcel(
+          expectation.caseId,
+          attachment.filename,
+          await this.readAttachment(message.id, attachment),
+          expectation.artifactScope,
+        )
       : undefined;
 
     return {

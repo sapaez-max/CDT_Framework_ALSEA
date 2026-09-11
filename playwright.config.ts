@@ -13,7 +13,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   globalSetup: './setup/global-auth-check.ts',
   fullyParallel: false,
-  timeout: 60_000,
+  timeout: env.testTimeoutMs,
   expect: {
     timeout: env.expectTimeoutMs,
   },

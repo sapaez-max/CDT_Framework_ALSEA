@@ -11,6 +11,8 @@ export type CoreViewerTemplateExpectation = {
   itemId: string;
   itemName: string;
   itemDescription: string;
+  itemPrices: number[];
+  itemDaypart?: string;
   categoryName: string;
   groupId: string;
   groupName: string;
@@ -36,8 +38,13 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   const itemColumn = requiredColumn(items, ['Item']);
   const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
   const itemDescriptionColumn = requiredColumn(items, ['Descripcion']);
+  const itemPriceColumns = items.headers
+    .map((header, index) => ({ header: normalize(header), index }))
+    .filter(({ header }) => /^PRICELEVEL\d+$/.test(header))
+    .map(({ index }) => index);
+  const itemDaypartColumn = optionalColumn(items, ['Daypart']);
   const categoryItemColumn = requiredColumn(categories, ['Item']);
-  const categoryNameColumn = requiredColumn(categories, ['Categoria']);
+  const categoryNameColumn = requiredColumn(categories, ['Categoria', 'Nombre Categoria']);
   const groupIdColumn = requiredColumn(groups, ['Grupo Modificador']);
   const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
   const groupDescriptionColumn = requiredColumn(groups, ['Descripcion']);
@@ -76,9 +83,13 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   }
 
   const categoryRow = categories.rows.find((row, index) =>
-    index > 0 && canonicalId(row[categoryItemColumn]) === itemId);
+    index > 0
+    && canonicalId(row[categoryItemColumn]) === itemId
+    && hasValue(row[categoryNameColumn]));
   if (!categoryRow) {
-    throw new Error(`No se encontro categoria para el item ${itemId} en ${inputPath}.`);
+    throw new Error(
+      `No se encontro una Categoria no vacia para el item ${itemId} en ${inputPath}.`,
+    );
   }
 
   return {
@@ -86,6 +97,10 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
     itemId,
     itemName: displayValue(itemRow[itemNameColumn]),
     itemDescription: displayValue(itemRow[itemDescriptionColumn]),
+    itemPrices: uniqueNumbers(itemPriceColumns.map(column => itemRow[column])),
+    itemDaypart: itemDaypartColumn >= 0
+      ? displayValue(itemRow[itemDaypartColumn]) || undefined
+      : undefined,
     categoryName: displayValue(categoryRow[categoryNameColumn]),
     groupId,
     groupName: displayValue(groups.rows[editedGroupRow][groupNameColumn]),
@@ -133,6 +148,19 @@ function requiredColumn(table: SheetTable, aliases: string[]): number {
   }
 
   return index;
+}
+
+function optionalColumn(table: SheetTable, aliases: string[]): number {
+  const normalizedAliases = aliases.map(normalize);
+  return table.headers.findIndex(header => normalizedAliases.includes(normalize(header)));
+}
+
+function uniqueNumbers(values: unknown[]): number[] {
+  const numbers = values
+    .map(value => Number(displayValue(value).replace(/[$,]/g, '')))
+    .filter(value => Number.isFinite(value));
+
+  return [...new Set(numbers)];
 }
 
 function normalize(value: unknown): string {

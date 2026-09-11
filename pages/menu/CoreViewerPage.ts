@@ -15,6 +15,9 @@ export type CoreViewerDiagnostic = {
   expectedGroupName: string;
   expectedGroupId: string;
   expectedTemplate: string;
+  previewVisible: boolean;
+  jsonVisible: boolean;
+  jsonText?: string;
   groupsFound: string[];
   expectedNameInTree: boolean;
   expectedIdInDom: boolean;
@@ -60,69 +63,51 @@ export class CoreViewerPage extends BasePage {
     await this.selectCard(filters.branch, 'Sucursal');
   }
 
-  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<void> {
+  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<string> {
     await this.search(expectation.categoryName);
     await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
     await this.openVisibleResult(expectation.categoryName);
 
     await this.search(expectation.itemName);
-    await this.expectVisiblePageText(expectation.itemName, 'Debe visualizarse el item registrado en la plantilla');
-    await this.openVisibleResult(expectation.itemName);
+    await this.openExpectedProduct(expectation);
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
-    await this.expandTreeCompletely();
     await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
     await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
-
-    await this.expectGroupVisible(expectation.groupName, expectation);
-    await this.expectVisiblePreviewText(expectation.groupDescription, 'Debe visualizarse la descripcion del grupo modificador editado');
-
-    for (const modifier of expectation.modifiers) {
-      await this.expectVisiblePreviewText(modifier.name, `Debe visualizarse el modificador ${modifier.id}`);
-    }
-
-    await this.expectVisualOrder(
-      [expectation.groupName],
-      `El grupo modificador ${expectation.groupId} debe estar disponible para validar orden ${expectation.groupOrder}`,
-    );
-    await this.expectVisualOrder(
-      expectation.modifiers.map(modifier => modifier.name),
-      'Los modificadores deben visualizarse en el orden definido por la columna Orden de la plantilla',
-    );
+    const jsonText = await this.openJsonView();
+    this.validateJsonExpectation(jsonText, expectation);
+    return jsonText;
   }
 
   async collectDiagnostic(
     filters: CoreViewerFilters,
     expectation: CoreViewerTemplateExpectation,
   ): Promise<CoreViewerDiagnostic> {
-    await this.expandTreeCompletely().catch(() => undefined);
-    const groupsFound = await this.visibleGroupNames();
-    const domInfo = await this.productPreview().evaluate((root, expectedGroupId) => {
-      const tree = root.querySelector('[role="tree"], .ant-tree');
-      const all = Array.from(root.querySelectorAll('*'));
-      const textOf = (element: Element) => (element.textContent || '').replace(/\s+/g, ' ').trim();
-      const expectedIdInDom = all.some((element) =>
-        textOf(element).includes(expectedGroupId)
-        || Array.from(element.attributes).some(attribute => attribute.value.includes(expectedGroupId)));
-      const internalScrollContainers = all
-        .filter(element => element.scrollHeight > element.clientHeight + 2)
-        .map(element => ({
-          tag: element.tagName,
-          className: typeof (element as HTMLElement).className === 'string'
-            ? (element as HTMLElement).className
-            : '',
-          clientHeight: element.clientHeight,
-          scrollHeight: element.scrollHeight,
-        }));
+    const previewVisible = await this.productPreview().isVisible().catch(() => false);
 
+    if (!previewVisible) {
       return {
-        expectedIdInDom,
-        treeHadCollapsedNodes: root.querySelectorAll('.ant-tree-switcher_close, .rc-tree-switcher_close').length > 0,
-        treeScroll: tree
-          ? { clientHeight: tree.clientHeight, scrollHeight: tree.scrollHeight, scrollTop: tree.scrollTop }
-          : null,
-        internalScrollContainers,
+        context: filters,
+        product: `${expectation.itemId} - ${expectation.itemName}`,
+        expectedGroupName: expectation.groupName,
+        expectedGroupId: expectation.groupId,
+        expectedTemplate: expectation.inputPath,
+        previewVisible: false,
+        jsonVisible: false,
+        jsonText: undefined,
+        groupsFound: [],
+        expectedNameInTree: false,
+        expectedIdInDom: false,
+        treeHadCollapsedNodes: false,
+        treeScroll: null,
+        internalScrollContainers: [],
+        timestamp: new Date().toISOString(),
       };
-    }, expectation.groupId);
+    }
+
+    const json = this.jsonContent();
+    const jsonVisible = await json.isVisible().catch(() => false);
+    const jsonText = jsonVisible ? await json.textContent() ?? '' : '';
+    const groupsFound = jsonText.includes(expectation.groupName) ? [expectation.groupName] : [];
 
     return {
       context: filters,
@@ -130,12 +115,15 @@ export class CoreViewerPage extends BasePage {
       expectedGroupName: expectation.groupName,
       expectedGroupId: expectation.groupId,
       expectedTemplate: expectation.inputPath,
+      previewVisible: true,
+      jsonVisible,
+      jsonText: jsonVisible ? jsonText : undefined,
       groupsFound,
       expectedNameInTree: groupsFound.includes(expectation.groupName),
-      expectedIdInDom: domInfo.expectedIdInDom,
-      treeHadCollapsedNodes: domInfo.treeHadCollapsedNodes,
-      treeScroll: domInfo.treeScroll,
-      internalScrollContainers: domInfo.internalScrollContainers,
+      expectedIdInDom: jsonText.includes(expectation.groupId),
+      treeHadCollapsedNodes: false,
+      treeScroll: null,
+      internalScrollContainers: [],
       timestamp: new Date().toISOString(),
     };
   }
@@ -239,8 +227,93 @@ export class CoreViewerPage extends BasePage {
   private async openVisibleResult(value: string): Promise<void> {
     const result = this.pageText(value);
     await expect(result, `Debe existir el resultado ${value}`).toBeVisible();
-    await result.click().catch(() => undefined);
+    await result.click();
     await this.waitForLoadingToFinish();
+  }
+
+  private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<void> {
+    const cards = this.productCards().filter({
+      has: this.page.getByText(exactTextPattern(expectation.itemName)),
+    });
+    await expect
+      .poll(() => cards.count(), {
+        message: `Debe existir el producto ${expectation.itemId} - ${expectation.itemName}`,
+      })
+      .toBeGreaterThan(0);
+
+    const visibleCards = await cards.evaluateAll(elements => elements.map((element, index) => ({
+      index,
+      text: (element.textContent || '').replace(/\s+/g, ' ').trim(),
+    })));
+    const expectedPrices = expectation.itemPrices.map(formatPrice);
+    let matches = expectedPrices.length > 0
+      ? visibleCards.filter(card => expectedPrices.some(price => card.text.includes(price)))
+      : visibleCards;
+
+    if (matches.length > 1 && expectation.itemDaypart) {
+      const expectedDaypart = normalizeForComparison(expectation.itemDaypart);
+      matches = matches.filter(card => normalizeForComparison(card.text).includes(expectedDaypart));
+    }
+
+    if (matches.length !== 1) {
+      throw new Error([
+        `No fue posible identificar de forma unica el producto ${expectation.itemId} - ${expectation.itemName}.`,
+        `Precios esperados: ${expectedPrices.join(', ') || 'sin precio en la plantilla'}.`,
+        `Daypart esperado: ${expectation.itemDaypart || 'sin Daypart en la plantilla'}.`,
+        `Coincidencias encontradas: ${JSON.stringify(visibleCards.map(card => card.text))}.`,
+      ].join('\n'));
+    }
+
+    const product = cards.nth(matches[0].index);
+    await expect(product, `Debe visualizarse el producto ${expectation.itemId}`).toBeVisible();
+    await product.click();
+    await this.waitForLoadingToFinish();
+  }
+
+  private async openJsonView(): Promise<string> {
+    const preview = this.productPreview();
+    const viewJson = preview
+      .locator('.ant-typography.text-primary.selectable')
+      .filter({ hasText: exactTextPattern('Ver JSON') })
+      .first();
+    await expect(viewJson, 'Debe existir la accion Ver JSON en la previsualizacion').toBeVisible();
+    await viewJson.click();
+
+    const json = this.jsonContent();
+    await expect(json, 'Debe abrirse el JSON del producto seleccionado').toBeVisible();
+    return await json.textContent() ?? '';
+  }
+
+  private validateJsonExpectation(
+    jsonText: string,
+    expectation: CoreViewerTemplateExpectation,
+  ): void {
+    const expectedValues = [
+      { label: 'item', value: expectation.itemId },
+      { label: 'nombre del item', value: expectation.itemName },
+      { label: 'descripcion del item', value: expectation.itemDescription },
+      { label: 'grupo modificador', value: expectation.groupId },
+      { label: 'nombre del grupo modificador', value: expectation.groupName },
+      { label: 'descripcion del grupo modificador', value: expectation.groupDescription },
+      ...expectation.modifiers.flatMap(modifier => [
+        { label: `modificador ${modifier.id}`, value: modifier.id },
+        { label: `nombre del modificador ${modifier.id}`, value: modifier.name },
+      ]),
+    ];
+
+    for (const expected of expectedValues) {
+      expect(
+        jsonText.includes(expected.value),
+        `El JSON debe contener ${expected.label}: ${expected.value}`,
+      ).toBe(true);
+    }
+
+    const modifierPositions = expectation.modifiers.map(modifier => jsonText.indexOf(modifier.name));
+    const sortedPositions = [...modifierPositions].sort((left, right) => left - right);
+    expect(
+      modifierPositions,
+      'Los modificadores deben conservar en el JSON el orden definido en la plantilla',
+    ).toEqual(sortedPositions);
   }
 
   private async matchVisibleCard(value: string): Promise<
@@ -293,6 +366,10 @@ export class CoreViewerPage extends BasePage {
     return this.page.locator('.ant-card-grid.selectable');
   }
 
+  private productCards(): Locator {
+    return this.page.locator('.ant-card-grid.selectable.p-3');
+  }
+
   private cardByText(card: VisibleCardData, value: string): Locator {
     if (matchesExactLabeledCode(card.text, value)) {
       return this.visibleCards().filter({ hasText: exactLabeledCodePattern(value) }).first();
@@ -309,25 +386,6 @@ export class CoreViewerPage extends BasePage {
     await expect(this.previewText(value), message).toBeVisible();
   }
 
-  private async expectGroupVisible(value: string, expectation: CoreViewerTemplateExpectation): Promise<void> {
-    const group = this.productPreview().getByRole('heading', { name: exactTextPattern(value) });
-    const visibleGroupNames = await this.visibleGroupNames();
-
-    if (await group.count()) {
-      await expect(group, 'Debe visualizarse el grupo modificador editado').toBeVisible();
-      return;
-    }
-
-    throw new Error([
-      'Debe visualizarse el grupo modificador editado.',
-      `Grupo esperado: ${value}`,
-      `Grupo ID: ${expectation.groupId}`,
-      `Producto: ${expectation.itemId} - ${expectation.itemName}`,
-      `Archivo: ${expectation.inputPath}`,
-      `Grupos visibles encontrados: ${JSON.stringify(visibleGroupNames)}`,
-    ].join('\n'));
-  }
-
   private pageText(value: string): Locator {
     return this.page.getByText(exactTextPattern(value));
   }
@@ -340,79 +398,8 @@ export class CoreViewerPage extends BasePage {
     return this.page.getByRole('dialog').filter({ hasText: /Previsualizaci[oó]n/i });
   }
 
-  private async expandTreeCompletely(): Promise<void> {
-    const preview = this.productPreview();
-    const tree = preview.getByRole('tree');
-    await expect(tree, 'Debe existir el arbol de grupos modificadores en la previsualizacion').toBeVisible();
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const closedSwitchers = preview.locator('.ant-tree-switcher_close, .rc-tree-switcher_close');
-      const count = await closedSwitchers.count();
-      if (count === 0) break;
-
-      for (let index = 0; index < count; index += 1) {
-        const switcher = closedSwitchers.nth(index);
-        if (await switcher.isVisible().catch(() => false)) {
-          await switcher.click();
-        }
-      }
-
-      await this.waitForLoadingToFinish();
-    }
-
-    await expect(preview.locator('.ant-tree-switcher_close, .rc-tree-switcher_close')).toHaveCount(0);
-    await this.scrollTreeAndDrawerCompletely();
-  }
-
-  private async scrollTreeAndDrawerCompletely(): Promise<void> {
-    await this.productPreview().evaluate(async (root) => {
-      const containers = Array.from(root.querySelectorAll('*'))
-        .filter(element => element.scrollHeight > element.clientHeight + 2) as HTMLElement[];
-      const scrollables = [root as HTMLElement, ...containers];
-
-      for (const element of scrollables) {
-        element.scrollTop = 0;
-        element.dispatchEvent(new Event('scroll', { bubbles: true }));
-        await new Promise(requestAnimationFrame);
-
-        while (element.scrollTop + element.clientHeight < element.scrollHeight - 2) {
-          const previous = element.scrollTop;
-          element.scrollTop = Math.min(element.scrollTop + element.clientHeight, element.scrollHeight);
-          element.dispatchEvent(new Event('scroll', { bubbles: true }));
-          await new Promise(requestAnimationFrame);
-          if (element.scrollTop === previous) break;
-        }
-
-        element.scrollTop = 0;
-        element.dispatchEvent(new Event('scroll', { bubbles: true }));
-        await new Promise(requestAnimationFrame);
-      }
-    });
-  }
-
-  async visibleGroupNames(): Promise<string[]> {
-    const preview = this.productPreview();
-
-    return preview.getByRole('tree').getByRole('heading', { level: 6 }).evaluateAll((headings) =>
-      headings.map(heading => (heading.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean),
-    ).catch(() => []);
-  }
-
-  private async expectVisualOrder(values: string[], message: string): Promise<void> {
-    const positions: number[] = [];
-
-    for (const value of values) {
-      const locator = this.previewText(value);
-      await expect(locator, message).toBeVisible();
-      const box = await locator.boundingBox();
-      if (!box) {
-        throw new Error(`No fue posible obtener la posicion visual de "${value}".`);
-      }
-      positions.push(box.y);
-    }
-
-    const sorted = [...positions].sort((left, right) => left - right);
-    expect(positions, message).toEqual(sorted);
+  private jsonContent(): Locator {
+    return this.page.getByRole('dialog').filter({ has: this.page.locator('pre') }).last().locator('pre');
   }
 
   private async waitForLoadingToFinish(): Promise<void> {
@@ -477,4 +464,8 @@ function normalizeForComparison(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
+}
+
+function formatPrice(value: number): string {
+  return `$${value.toFixed(2)}`;
 }

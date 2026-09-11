@@ -1,10 +1,15 @@
 import fs from 'fs';
 import xlsx, { type WorkBook, type WorkSheet } from 'xlsx';
-import { copyExcelFromPreviousCase, getLatestExcelForCase } from './case-artifact-manager';
+import {
+  copyExcelFromPreviousCase,
+  type ArtifactScope,
+} from './case-artifact-manager';
 
 export type TemplateEditRequest = {
   caseId: string;
   sourceCaseId: string;
+  aggregator: string;
+  artifactScope: ArtifactScope;
 };
 
 export type CellChange = {
@@ -20,6 +25,8 @@ export type TemplateEditResult = {
   inputPath: string;
   outputPath: string;
   itemId: string;
+  itemName: string;
+  categoryName: string;
   groupId: string;
   modifierIds: string[];
   changes: CellChange[];
@@ -38,12 +45,13 @@ type SheetTable = {
   headers: unknown[];
 };
 
-const requiredSheets = ['Items', 'GrupoModificador', 'Modificadores'] as const;
+const requiredSheets = ['Items', 'Categorias', 'GrupoModificador', 'Modificadores'] as const;
 
 export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEditResult {
   const { sourcePath, targetPath: inputPath } = copyExcelFromPreviousCase({
     fromCase: request.sourceCaseId,
     toCase: request.caseId,
+    scope: request.artifactScope,
   });
   const workbook = xlsx.readFile(inputPath, { cellStyles: true });
   const originalSheetNames = [...workbook.SheetNames];
@@ -52,11 +60,15 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   );
 
   const items = requiredTable(workbook, 'Items');
+  const categories = requiredTable(workbook, 'Categorias');
   const groups = requiredTable(workbook, 'GrupoModificador');
   const modifiers = requiredTable(workbook, 'Modificadores');
-  ensureTablesHaveData([items, groups, modifiers], inputPath);
+  ensureTablesHaveData([items, categories, groups, modifiers], inputPath);
 
   const itemColumn = requiredColumn(items, ['Item']);
+  const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
+  const categoryItemColumn = requiredColumn(categories, ['Item']);
+  const categoryNameColumn = requiredColumn(categories, ['Categoria', 'Nombre Categoria']);
   const groupIdColumn = requiredColumn(groups, ['Grupo Modificador']);
   const modifierItemColumn = requiredColumn(modifiers, ['Item']);
   const modifierGroupColumn = requiredColumn(modifiers, ['Grupo Modificador']);
@@ -64,19 +76,33 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
   const groupDescriptionColumn = requiredColumn(groups, ['Descripcion']);
   const modifierNameColumn = requiredColumn(modifiers, ['Nombre Comercial Modificador']);
+  const groupAggregatorColumn = requiredColumn(groups, [request.aggregator]);
+  const modifierAggregatorColumn = requiredColumn(modifiers, [request.aggregator]);
 
   const selection = selectRelatedRows(
     items,
+    categories,
     groups,
     modifiers,
     itemColumn,
+    categoryItemColumn,
+    categoryNameColumn,
     groupIdColumn,
     modifierItemColumn,
     modifierGroupColumn,
+    groupAggregatorColumn,
+    modifierAggregatorColumn,
+    request.aggregator,
   );
-  const marker = `${request.caseId}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  const currentDate = formatDate(new Date());
+  const marker = `${request.caseId}_${currentDate}`;
   const changes: CellChange[] = [];
   const unchangedCells = [
+    ...snapshotUnchangedRowCells(
+      items,
+      selection.itemRow,
+      new Set([itemNameColumn]),
+    ),
     ...snapshotUnchangedRowCells(
       groups,
       selection.groupRow,
@@ -86,6 +112,8 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
       snapshotUnchangedRowCells(modifiers, row, new Set([modifierNameColumn]))),
   ];
 
+  const previousItemName = displayValue(items.rows[selection.itemRow][itemNameColumn]).trim();
+  changeCell(items, selection.itemRow, itemNameColumn, `${previousItemName}_${currentDate}`, changes);
   changeCell(groups, selection.groupRow, groupNameColumn, `AUTO_${marker}`, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
 
@@ -103,14 +131,12 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     inputPath,
     outputPath,
     itemId: canonicalId(selection.itemId),
+    itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]).trim(),
+    categoryName: selection.categoryName,
     groupId: canonicalId(selection.groupId),
     modifierIds: selection.modifierRows.map(row => canonicalId(modifiers.rows[row][modifierIdColumn])),
     changes,
   };
-}
-
-export function findEditedTemplate(caseId: string): string {
-  return getLatestExcelForCase(caseId);
 }
 
 function requiredTable(workbook: WorkBook, expectedName: string): SheetTable {
@@ -161,43 +187,92 @@ function requiredColumn(table: SheetTable, aliases: string[]): number {
 
 function selectRelatedRows(
   items: SheetTable,
+  categories: SheetTable,
   groups: SheetTable,
   modifiers: SheetTable,
   itemColumn: number,
+  categoryItemColumn: number,
+  categoryNameColumn: number,
   groupIdColumn: number,
   modifierItemColumn: number,
   modifierGroupColumn: number,
-): { itemId: unknown; groupId: unknown; groupRow: number; modifierRows: number[] } {
-  const itemIds = new Set(
-    items.rows.slice(1).map(row => canonicalId(row[itemColumn])).filter(Boolean),
+  groupAggregatorColumn: number,
+  modifierAggregatorColumn: number,
+  aggregator: string,
+): {
+  itemId: unknown;
+  itemRow: number;
+  categoryName: string;
+  groupId: unknown;
+  groupRow: number;
+  modifierRows: number[];
+} {
+  const itemRows = new Map(
+    items.rows.slice(1)
+      .map((row, index) => [canonicalId(row[itemColumn]), index + 1] as const)
+      .filter(([itemId]) => itemId),
   );
+  const categoryByItem = new Map<string, string>();
+  for (const row of categories.rows.slice(1)) {
+    const itemId = canonicalId(row[categoryItemColumn]);
+    const categoryName = displayValue(row[categoryNameColumn]).trim();
+    if (itemId && categoryName && !categoryByItem.has(itemId)) {
+      categoryByItem.set(itemId, categoryName);
+    }
+  }
 
   for (let groupRow = 1; groupRow < groups.rows.length; groupRow += 1) {
     const groupId = groups.rows[groupRow][groupIdColumn];
-    if (!hasValue(groupId)) continue;
+    if (!hasValue(groupId) || !isEnabled(groups.rows[groupRow][groupAggregatorColumn])) continue;
 
-    const relatedModifierRows: number[] = [];
-    for (let modifierRow = 1; modifierRow < modifiers.rows.length; modifierRow += 1) {
-      if (canonicalId(modifiers.rows[modifierRow][modifierGroupColumn]) === canonicalId(groupId)) {
-        relatedModifierRows.push(modifierRow);
-      }
+    const candidateItemIds = new Set(
+      modifiers.rows.slice(1)
+        .filter(row => canonicalId(row[modifierGroupColumn]) === canonicalId(groupId))
+        .map(row => canonicalId(row[modifierItemColumn]))
+        .filter(Boolean),
+    );
+
+    for (const itemId of candidateItemIds) {
+      const itemRow = itemRows.get(itemId);
+      const categoryName = categoryByItem.get(itemId);
+      if (itemRow === undefined || !categoryName) continue;
+
+      const relatedModifierRows = modifiers.rows
+        .map((row, index) => ({ row, index }))
+        .filter(({ row, index }) =>
+          index > 0
+          && canonicalId(row[modifierGroupColumn]) === canonicalId(groupId)
+          && canonicalId(row[modifierItemColumn]) === itemId
+          && isEnabled(row[modifierAggregatorColumn]))
+        .map(({ index }) => index);
+      if (relatedModifierRows.length < 2) continue;
+
+      return {
+        itemId,
+        itemRow,
+        categoryName,
+        groupId,
+        groupRow,
+        modifierRows: relatedModifierRows.slice(0, 2),
+      };
     }
-
-    if (relatedModifierRows.length < 2) continue;
-    const itemId = modifiers.rows[relatedModifierRows[0]][modifierItemColumn];
-    if (!itemIds.has(canonicalId(itemId))) continue;
-
-    return {
-      itemId,
-      groupId,
-      groupRow,
-      modifierRows: relatedModifierRows.slice(0, 2),
-    };
   }
 
   throw new Error(
-    'No se encontro un producto con un grupo modificador relacionado y al menos dos modificadores editables.',
+    `No se encontro un item que exista en Items, tenga una Categoria no vacia y este relacionado con un grupo modificador y al menos dos modificadores habilitados para ${aggregator}.`,
   );
+}
+
+function isEnabled(value: unknown): boolean {
+  return displayValue(value).trim() === '*';
+}
+
+function formatDate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('');
 }
 
 function changeCell(
