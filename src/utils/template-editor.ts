@@ -5,7 +5,6 @@ import { copyExcelFromPreviousCase, getLatestExcelForCase } from './case-artifac
 export type TemplateEditRequest = {
   caseId: string;
   sourceCaseId: string;
-  aggregators: string[];
 };
 
 export type CellChange = {
@@ -23,8 +22,13 @@ export type TemplateEditResult = {
   itemId: string;
   groupId: string;
   modifierIds: string[];
-  aggregator: string;
   changes: CellChange[];
+};
+
+type CellSnapshot = {
+  sheet: string;
+  cell: string;
+  value: string;
 };
 
 type SheetTable = {
@@ -59,12 +63,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const modifierIdColumn = requiredColumn(modifiers, ['Modificador']);
   const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
   const groupDescriptionColumn = requiredColumn(groups, ['Descripcion']);
-  const groupOrderColumn = requiredColumn(groups, ['Orden', 'Posicion']);
   const modifierNameColumn = requiredColumn(modifiers, ['Nombre Comercial Modificador']);
-  const modifierOrderColumn = requiredColumn(modifiers, ['Orden', 'Posicion']);
-  const aggregator = firstAvailableAggregator(request.aggregators, groups, modifiers);
-  const groupAggregatorColumn = requiredColumn(groups, [aggregator]);
-  const modifierAggregatorColumn = requiredColumn(modifiers, [aggregator]);
 
   const selection = selectRelatedRows(
     items,
@@ -77,31 +76,27 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   );
   const marker = `${request.caseId}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
   const changes: CellChange[] = [];
+  const unchangedCells = [
+    ...snapshotUnchangedRowCells(
+      groups,
+      selection.groupRow,
+      new Set([groupNameColumn, groupDescriptionColumn]),
+    ),
+    ...selection.modifierRows.flatMap(row =>
+      snapshotUnchangedRowCells(modifiers, row, new Set([modifierNameColumn]))),
+  ];
 
   changeCell(groups, selection.groupRow, groupNameColumn, `AUTO_${marker}`, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
-  changeCell(
-    groups,
-    selection.groupRow,
-    groupOrderColumn,
-    nextOrder(groups.rows[selection.groupRow][groupOrderColumn]),
-    changes,
-  );
-  changeCell(groups, selection.groupRow, groupAggregatorColumn, '*', changes);
 
-  const modifierPositions = nextModifierPositions(
-    selection.modifierRows.map(row => modifiers.rows[row][modifierOrderColumn]),
-  );
   selection.modifierRows.forEach((row, index) => {
     changeCell(modifiers, row, modifierNameColumn, `AUTO_${marker}_MOD_${index + 1}`, changes);
-    changeCell(modifiers, row, modifierOrderColumn, modifierPositions[index], changes);
-    changeCell(modifiers, row, modifierAggregatorColumn, '*', changes);
   });
 
   const outputPath = inputPath;
   xlsx.writeFile(workbook, outputPath, { compression: true, cellStyles: true });
 
-  verifyEditedTemplate(outputPath, originalSheetNames, originalRowCounts, changes);
+  verifyEditedTemplate(outputPath, originalSheetNames, originalRowCounts, changes, unchangedCells);
 
   return {
     sourcePath,
@@ -110,7 +105,6 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     itemId: canonicalId(selection.itemId),
     groupId: canonicalId(selection.groupId),
     modifierIds: selection.modifierRows.map(row => canonicalId(modifiers.rows[row][modifierIdColumn])),
-    aggregator,
     changes,
   };
 }
@@ -163,23 +157,6 @@ function requiredColumn(table: SheetTable, aliases: string[]): number {
     );
   }
   return index;
-}
-
-function firstAvailableAggregator(
-  preferences: string[],
-  groups: SheetTable,
-  modifiers: SheetTable,
-): string {
-  const available = preferences.find(candidate =>
-    groups.headers.some(header => normalize(header) === normalize(candidate))
-    && modifiers.headers.some(header => normalize(header) === normalize(candidate)),
-  );
-  if (!available) {
-    throw new Error(
-      `Ninguno de los agregadores configurados (${preferences.join(', ')}) existe en GrupoModificador y Modificadores.`,
-    );
-  }
-  return available;
 }
 
 function selectRelatedRows(
@@ -243,18 +220,19 @@ function changeCell(
   });
 }
 
-function nextOrder(value: unknown): number {
-  const current = Number(value);
-  return Number.isFinite(current) && current >= 0 ? current + 1 : 1;
-}
-
-function nextModifierPositions(values: unknown[]): number[] {
-  const numeric = values.map(Number);
-  if (numeric.length === 2 && numeric.every(Number.isFinite) && numeric[0] !== numeric[1]) {
-    return [numeric[1], numeric[0]];
-  }
-  const maximum = numeric.filter(Number.isFinite).reduce((max, value) => Math.max(max, value), 0);
-  return [maximum + 1, maximum + 2];
+function snapshotUnchangedRowCells(
+  table: SheetTable,
+  row: number,
+  changedColumns: ReadonlySet<number>,
+): CellSnapshot[] {
+  return table.headers.flatMap((_, column) => {
+    if (changedColumns.has(column)) return [];
+    return [{
+      sheet: table.name,
+      cell: xlsx.utils.encode_cell({ r: row, c: column }),
+      value: displayValue(table.rows[row][column]),
+    }];
+  });
 }
 
 function verifyEditedTemplate(
@@ -262,6 +240,7 @@ function verifyEditedTemplate(
   expectedSheetNames: string[],
   expectedRowCounts: Record<string, number>,
   changes: CellChange[],
+  unchangedCells: CellSnapshot[],
 ): void {
   if (!fs.existsSync(outputPath)) {
     throw new Error(`No se genero la plantilla editada ${outputPath}.`);
@@ -286,6 +265,15 @@ function verifyEditedTemplate(
     if (displayValue(actual) !== change.newValue) {
       throw new Error(
         `No se conservo el cambio ${change.sheet}!${change.cell}. Esperado: ${change.newValue}. Actual: ${displayValue(actual)}.`,
+      );
+    }
+  }
+
+  for (const snapshot of unchangedCells) {
+    const actual = saved.Sheets[snapshot.sheet]?.[snapshot.cell]?.v;
+    if (displayValue(actual) !== snapshot.value) {
+      throw new Error(
+        `La celda no editable ${snapshot.sheet}!${snapshot.cell} cambio. Esperado: ${snapshot.value}. Actual: ${displayValue(actual)}.`,
       );
     }
   }

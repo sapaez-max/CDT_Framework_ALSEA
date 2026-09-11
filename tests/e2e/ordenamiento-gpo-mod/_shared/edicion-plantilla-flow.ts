@@ -12,7 +12,6 @@ export async function ejecutarEdicionPlantilla(
     async () => editDownloadedTemplate({
       caseId: caseData.id,
       sourceCaseId: caseData.sourceCaseId,
-      aggregators: caseData.aggregators,
     }),
   );
 
@@ -23,7 +22,6 @@ export async function ejecutarEdicionPlantilla(
     { type: 'Producto', description: result.itemId },
     { type: 'Grupo modificador', description: result.groupId },
     { type: 'Modificadores', description: result.modifierIds.join(', ') },
-    { type: 'Agregador', description: result.aggregator },
   );
 
   for (const change of result.changes) {

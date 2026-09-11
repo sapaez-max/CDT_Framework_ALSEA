@@ -1,6 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { BasePage } from '@pages/base/BasePage';
 
+const FILE_OPERATION_TIMEOUT_MS = 30_000;
+
 type VisibleOptionData = {
   index: number;
   text: string;
@@ -12,9 +14,12 @@ export type TemplateDownloadFormData = {
   country: string | string[];
   brand: string | string[];
   baseBranch?: string | string[];
+  expectedBaseBranchLabel?: string;
   childBranch?: string | string[];
   menuType: string | string[];
   childMenuType?: string | string[];
+  downloadDate?: string;
+  exactSelections?: boolean;
   expectedMessage: RegExp;
 };
 
@@ -26,6 +31,11 @@ export type MenuLoadFormData = {
   menuType: string | string[];
   description: string;
   expectedMessage: RegExp;
+};
+
+export type MenuLoadPortalResult = {
+  status: 'accepted' | 'endpoint-timeout';
+  notification: string;
 };
 
 export type FilterLoadFormData = {
@@ -60,14 +70,19 @@ export class MenuAdministrationPage extends BasePage {
   }
 
   async prepareTemplateDownload(caseData: TemplateDownloadFormData): Promise<void> {
-    await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
-    await this.selectField(/Marca|Marcas/i, caseData.brand);
+    await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country, caseData.exactSelections);
+    await this.selectField(/Marca|Marcas/i, caseData.brand, caseData.exactSelections);
 
     if (caseData.baseBranch) {
-      await this.selectField(/Sucursal base|Sucursales|Sucursal/i, caseData.baseBranch);
+      await this.selectField(
+        /Sucursal base|Sucursales|Sucursal/i,
+        caseData.baseBranch,
+        caseData.exactSelections,
+        caseData.expectedBaseBranchLabel,
+      );
     }
 
-    await this.selectField(/Tipo de men[uú]/i, caseData.menuType);
+    await this.selectField(/Tipo de men[uú]/i, caseData.menuType, caseData.exactSelections);
 
     if (caseData.childBranch) {
       await this.selectField(/Sucursal hija/i, caseData.childBranch);
@@ -75,6 +90,10 @@ export class MenuAdministrationPage extends BasePage {
 
     if (caseData.childMenuType) {
       await this.selectField(/Tipo men[uú]/i, caseData.childMenuType);
+    }
+
+    if (caseData.downloadDate) {
+      await this.setDownloadDate(caseData.downloadDate);
     }
   }
 
@@ -86,7 +105,7 @@ export class MenuAdministrationPage extends BasePage {
     await expect(
       this.successMessage(expectedMessage),
       'El portal debe confirmar la solicitud y el envio de la plantilla por correo',
-    ).toBeVisible();
+    ).toBeVisible({ timeout: FILE_OPERATION_TIMEOUT_MS });
   }
 
   async openMenuLoad(): Promise<void> {
@@ -103,7 +122,7 @@ export class MenuAdministrationPage extends BasePage {
     await this.openFilterLoadPage();
   }
 
-  async loadMenu(caseData: MenuLoadFormData): Promise<void> {
+  async loadMenu(caseData: MenuLoadFormData): Promise<MenuLoadPortalResult> {
     await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
     await this.selectField(/Marca|Marcas/i, caseData.brand);
     await this.selectField(/Sucursal|Sucursales/i, caseData.branch);
@@ -118,10 +137,20 @@ export class MenuAdministrationPage extends BasePage {
     await expect(button, 'Debe estar disponible el boton Cargar Menu').toBeEnabled();
     await button.click();
 
-    await this.expectVisibleNotification(
-      caseData.expectedMessage,
-      'El portal debe confirmar que la carga del menu fue iniciada correctamente',
-    );
+    const acceptedNotification = this.visibleNotification(caseData.expectedMessage);
+    const endpointTimeoutNotification = this.visibleNotification(/Endpoint request timed out/i);
+    const finalNotification = acceptedNotification.or(endpointTimeoutNotification).first();
+
+    await expect(
+      finalNotification,
+      'El portal debe confirmar la carga o informar el timeout conocido del endpoint',
+    ).toBeVisible({ timeout: FILE_OPERATION_TIMEOUT_MS });
+
+    const notification = (await finalNotification.innerText()).trim();
+    return {
+      status: /Endpoint request timed out/i.test(notification) ? 'endpoint-timeout' : 'accepted',
+      notification,
+    };
   }
 
   async loadFilters(caseData: FilterLoadFormData, filePath: string): Promise<void> {
@@ -149,6 +178,7 @@ export class MenuAdministrationPage extends BasePage {
       this.page.waitForResponse((candidate) =>
         candidate.request().method() === 'POST'
         && /\/menudelivery\/filters\b/i.test(candidate.url()),
+        { timeout: FILE_OPERATION_TIMEOUT_MS },
       ),
       button.click(),
     ]);
@@ -261,22 +291,79 @@ export class MenuAdministrationPage extends BasePage {
     await item.click();
   }
 
-  private async selectField(label: RegExp, value: string | string[]): Promise<void> {
+  private async selectField(
+    label: RegExp,
+    value: string | string[],
+    exact = false,
+    expectedLabel?: string,
+  ): Promise<void> {
     const values = Array.isArray(value) ? value : [value];
     const field = this.field(label);
     await expect(field, `Debe existir el selector ${label}`).toBeVisible();
     await expect(field, `El selector ${label} debe terminar de cargar`).not.toHaveClass(/ant-select-loading/);
 
-    if (await this.fieldContainsValue(field, values)) {
-      return;
+    if (!(await this.fieldContainsValue(field, values))) {
+      if (await this.isNativeSelect(field)) {
+        await this.selectNativeOption(field, values);
+      } else {
+        await this.selectAutocompleteOption(field, values, label);
+      }
     }
 
-    if (await this.isNativeSelect(field)) {
-      await this.selectNativeOption(field, values);
-      return;
+    if (exact) {
+      const expectedValues = expectedLabel ? [expectedLabel] : values;
+      await expect
+        .poll(() => this.fieldEqualsValue(field, expectedValues), {
+          message: `El selector ${label} debe mostrar exactamente ${expectedValues.join(' o ')}`,
+        })
+        .toBe(true);
+    }
+  }
+
+  private async setDownloadDate(value: string): Promise<void> {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+    if (!match) {
+      throw new Error(`La fecha de descarga debe tener formato DD/MM/YYYY. Valor recibido: ${value}`);
     }
 
-    await this.selectAutocompleteOption(field, values, label);
+    const [, day, month, year] = match;
+    const targetMonth = Number(month) - 1;
+    const targetYear = Number(year);
+    const targetCellTitle = `${year}-${month}-${day}`;
+    const input = this.page
+      .locator('.ant-picker input, input[placeholder*="DD/MM/YYYY"], input[type="date"]')
+      .filter({ visible: true })
+      .first();
+
+    await expect(input, 'Debe existir el campo de fecha para descargar la plantilla').toBeVisible();
+    await input.click();
+
+    const calendar = this.page.locator('.ant-picker-dropdown:visible').first();
+    await expect(calendar, 'Debe abrirse el calendario de fecha').toBeVisible();
+
+    const firstVisibleDate = calendar.locator('.ant-picker-cell-in-view[title]').first();
+    await expect(firstVisibleDate, 'El calendario debe mostrar fechas seleccionables').toBeVisible();
+    const visibleDateTitle = await firstVisibleDate.getAttribute('title');
+    const visibleDateMatch = /^(\d{4})-(\d{2})-\d{2}$/.exec(visibleDateTitle ?? '');
+    if (!visibleDateMatch) {
+      throw new Error(`No se pudo determinar el mes visible del calendario. Fecha encontrada: ${visibleDateTitle ?? 'sin valor'}`);
+    }
+
+    const visibleYear = Number(visibleDateMatch[1]);
+    const visibleMonth = Number(visibleDateMatch[2]) - 1;
+    const monthDifference = (targetYear - visibleYear) * 12 + targetMonth - visibleMonth;
+    const navigationButton = monthDifference < 0
+      ? calendar.locator('.ant-picker-header-prev-btn')
+      : calendar.locator('.ant-picker-header-next-btn');
+
+    for (let index = 0; index < Math.abs(monthDifference); index += 1) {
+      await navigationButton.click();
+    }
+
+    const targetCell = calendar.locator(`.ant-picker-cell-in-view[title="${targetCellTitle}"]`).first();
+    await expect(targetCell, `Debe existir la fecha ${value} en el calendario`).toBeVisible();
+    await targetCell.click();
+    await expect(input, 'La fecha de descarga debe conservar el valor esperado').toHaveValue(value);
   }
 
   private field(label: RegExp): Locator {
@@ -535,7 +622,7 @@ export class MenuAdministrationPage extends BasePage {
     const fileInput = this.page.locator('input[type="file"]').first();
 
     await expect(fileInput, 'Debe existir el control para adjuntar la plantilla editada').toHaveCount(1);
-    await fileInput.setInputFiles(filePath);
+    await fileInput.setInputFiles(filePath, { timeout: FILE_OPERATION_TIMEOUT_MS });
   }
 
   private async fieldContainsValue(field: Locator, values: string[]): Promise<boolean> {
@@ -555,6 +642,24 @@ export class MenuAdministrationPage extends BasePage {
     const normalizedCurrentText = normalizeForComparison(currentText || '');
 
     return values.some((value) => normalizedCurrentText.includes(normalizeForComparison(value)));
+  }
+
+  private async fieldEqualsValue(field: Locator, values: string[]): Promise<boolean> {
+    const currentValue = await field.evaluate((element) => {
+      const htmlElement = element as HTMLElement;
+      const nativeSelect = element instanceof HTMLSelectElement ? element : null;
+      const selectedItem = htmlElement.querySelector('.ant-select-selection-item');
+      const input = element instanceof HTMLInputElement ? element : htmlElement.querySelector('input');
+
+      return nativeSelect?.selectedOptions[0]?.text
+        || selectedItem?.getAttribute('title')
+        || selectedItem?.textContent
+        || input?.value
+        || '';
+    }).catch(() => '');
+    const normalizedCurrentValue = normalizeForComparison(currentValue);
+
+    return values.some((value) => normalizedCurrentValue === normalizeForComparison(value));
   }
 
   private visibleDropdown(): Locator {
@@ -596,10 +701,14 @@ export class MenuAdministrationPage extends BasePage {
       .first();
   }
 
-  private async expectVisibleNotification(message: RegExp, assertionMessage: string): Promise<void> {
+  private async expectVisibleNotification(
+    message: RegExp,
+    assertionMessage: string,
+    timeout?: number,
+  ): Promise<void> {
     const notification = this.visibleNotification(message);
 
-    await expect(notification, assertionMessage).toHaveCount(1);
+    await expect(notification, assertionMessage).toHaveCount(1, { timeout });
     await expect(notification, assertionMessage).toBeVisible();
   }
 

@@ -66,12 +66,22 @@ incluye evidencia HTML legible y el Excel recibido. Nunca se adjuntan
 Los bloques implementados siguen una cadena de cuatro casos por marca:
 descarga, edicion, carga de filtros y carga de menu. CP2, CP14, CP26 y CP38 toman
 respectivamente las plantillas de CP1, CP13, CP25 y CP37, limpian solo su carpeta,
-copian el Excel anterior a `artifacts/downloads/<CP>/` y editan esa copia. CP3,
+copian el Excel anterior a `artifacts/downloads/<CP>/` y editan esa copia. La
+edicion cambia solamente el nombre comercial y la descripcion de un grupo
+modificador, y el nombre comercial de sus dos primeros modificadores relacionados;
+los ordenes, posiciones y columnas de agregadores permanecen intactos. CP3,
 CP15, CP27 y CP39 copian el resultado de la edicion a su propia carpeta antes de
 cargar filtros. CP4, CP16, CP28 y CP40 copian el resultado del caso de filtros
 como referencia trazable del bloque antes de cargar menu. Si un caso requiere un
 Excel anterior y no existe exactamente uno, el framework falla con un mensaje
 descriptivo en lugar de elegir un archivo arbitrariamente.
+
+En la carga de menu, las cuatro marcas aceptan como resultado inicial el mensaje
+de exito del portal o el mensaje exacto `Endpoint request timed out`. Este timeout
+se registra en el reporte y no aprueba el caso por si solo: CP4, CP16, CP28 y CP40
+siempre deben recibir y validar un correo nuevo de carga exitosa. Cualquier otra
+notificacion de error o la ausencia del correo dentro del tiempo configurado hace
+fallar el caso.
 
 Playwright separa estos casos en proyectos por etapa:
 `ordenamiento-descarga`, `ordenamiento-edicion`, `ordenamiento-carga-filtros` y

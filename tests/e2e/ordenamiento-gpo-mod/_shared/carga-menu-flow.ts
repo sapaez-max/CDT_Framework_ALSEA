@@ -11,7 +11,7 @@ export async function ejecutarCargaMenu(
   page: Page,
   caseData: MenuLoadCase,
   testInfo: TestInfo,
-  gmailClient?: GmailClient,
+  gmailClient: GmailClient,
 ): Promise<void> {
   await goToLanding(page);
   await new LoginPage(page).expectAuthenticated();
@@ -33,30 +33,29 @@ export async function ejecutarCargaMenu(
   const menuPage = new MenuAdministrationPage(page);
   await menuPage.openMenuLoad();
 
-  const emailBaseline = caseData.expectedEmailSubject
-    ? await test.step('Capturar linea base de Gmail para carga de menu', async () => {
-        if (!gmailClient) {
-          throw new Error(`${caseData.id} requiere gmailClient para validar el correo de carga de menu.`);
-        }
+  const emailBaseline = await test.step(
+    'Capturar linea base de Gmail para carga de menu',
+    async () => gmailClient.captureCaseEmailBaseline(),
+  );
 
-        return gmailClient.captureCaseEmailBaseline();
-      })
-    : undefined;
+  const portalResult = await menuPage.loadMenu(caseData);
+  testInfo.annotations.push({
+    type: 'Resultado inicial del portal',
+    description: portalResult.status === 'endpoint-timeout'
+      ? `${portalResult.notification}. El procesamiento se valida mediante el correo final.`
+      : portalResult.notification,
+  });
 
-  await menuPage.loadMenu(caseData);
+  const email = await test.step('Esperar y validar correo nuevo de carga de menu', async () =>
+    gmailClient.waitForCaseEmail(emailBaseline, {
+      caseId: caseData.id,
+      subject: caseData.expectedEmailSubject,
+      bodyFields: caseData.expectedEmailBodyFields,
+    }));
 
-  if (caseData.expectedEmailSubject && caseData.expectedEmailBodyFields && emailBaseline && gmailClient) {
-    const email = await test.step('Esperar y validar correo nuevo de carga de menu', async () =>
-      gmailClient.waitForCaseEmail(emailBaseline, {
-        caseId: caseData.id,
-        subject: caseData.expectedEmailSubject!,
-        bodyFields: caseData.expectedEmailBodyFields!,
-      }));
-
-    await test.step('Adjuntar evidencia Gmail de carga de menu', async () => {
-      await attachGmailEvidence(testInfo, caseData, email);
-    });
-  }
+  await test.step('Adjuntar evidencia Gmail de carga de menu', async () => {
+    await attachGmailEvidence(testInfo, caseData, email);
+  });
 
   await test.step('Adjuntar referencia de la plantilla usada por el bloque', async () => {
     await expect(preparedTemplate.targetPath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);

@@ -21,7 +21,6 @@ export type TemplateEditCase = {
   requirement: string;
   sourceSheet: string;
   sourceRow: number;
-  aggregators: string[];
 };
 
 export type FilterLoadCase = FilterLoadFormData & {
@@ -45,8 +44,8 @@ export type MenuLoadCase = MenuLoadFormData & {
   sourceSheet: string;
   sourceRow: number;
   childBranchTrace?: string | string[];
-  expectedEmailSubject?: string | RegExp;
-  expectedEmailBodyFields?: EmailBodyExpectation[];
+  expectedEmailSubject: string | RegExp;
+  expectedEmailBodyFields: EmailBodyExpectation[];
 };
 
 export type CoreViewerCase = {
@@ -70,6 +69,22 @@ const expectedMenuLoadMessage = /El men[uú]\s+se est[aá]\s+cargando correctame
 const expectedFilterLoadEmailSubject = /carga\s+de\s+la\s+plantilla\s+desarrollo/i;
 const expectedMenuLoadEmailSubject = 'Carga de menu - Desarrollo';
 
+function menuLoadEmailBodyFields(
+  brand: string,
+  aggregator: string,
+  branchCode: string,
+): EmailBodyExpectation[] {
+  return [
+    { label: 'Marca', values: brand, extractPattern: /Marca\s*=\s*([^,\r\n]+)/i },
+    { label: 'Agregador', values: aggregator, extractPattern: /Agregador\s*=\s*([^,\r\n]+)/i },
+    { label: 'Pais', values: 'MX', extractPattern: /Pa[ií]s\s*=\s*([A-Z]{2})\b/i },
+    { label: 'Sucursal', values: branchCode, extractPattern: /SUCURSAL\s*:\s*(\d+)\b/i },
+    { label: 'ITEMS', values: 'ITEMS' },
+    { label: 'GRUPOS_MODIFICADORES', values: 'GRUPOS_MODIFICADORES' },
+    { label: 'MODIFICADORES', values: 'MODIFICADORES' },
+  ];
+}
+
 export const cp1Data: TemplateDownloadCase = {
   id: 'CP1',
   brandTag: '@starbucks',
@@ -92,11 +107,14 @@ export const cp13Data: TemplateDownloadCase = {
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'BK',
   sourceRow: 2,
-  country: ['MEXICO'],
-  brand: ['BURGER KING'],
-  baseBranch: ['7097'],
+  country: 'MEXICO',
+  brand: 'BURGER KING',
+  baseBranch: '7097',
+  expectedBaseBranchLabel: 'Burger King - Minerva - 7097',
   menuType: 'Delivery',
-  selectDate: false,
+  selectDate: true,
+  downloadDate: '03/08/2026',
+  exactSelections: true,
   expectedMessage: expectedTemplateRequestMessage,
 };
 
@@ -138,7 +156,6 @@ export const cp2Data: TemplateEditCase = {
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'SBX',
   sourceRow: 3,
-  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
 };
 
 export const cp14Data: TemplateEditCase = {
@@ -149,7 +166,6 @@ export const cp14Data: TemplateEditCase = {
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'BK',
   sourceRow: 3,
-  aggregators: ['UberEats', 'Didi', 'Rappi'],
 };
 
 export const cp26Data: TemplateEditCase = {
@@ -160,7 +176,6 @@ export const cp26Data: TemplateEditCase = {
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'VIPS',
   sourceRow: 3,
-  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
 };
 
 export const cp38Data: TemplateEditCase = {
@@ -171,7 +186,6 @@ export const cp38Data: TemplateEditCase = {
   requirement: 'OrdenamientoGpoMod&Mod 2.0',
   sourceSheet: 'Chilis',
   sourceRow: 3,
-  aggregators: ['UberEats', 'Didi', 'Rappi', 'Alsea'],
 };
 
 export const cp3Data: FilterLoadCase = {
@@ -184,12 +198,12 @@ export const cp3Data: FilterLoadCase = {
   sourceRow: 4,
   country: ['MEXICO'],
   brand: 'STARBUCKS',
-  aggregator: ['UBER EATS', 'DiDi', 'Rappi', 'Alsea'],
-  baseBranch: ['38109'],
+  aggregator: ['Rappi'],
+  baseBranch: ['STARBUCKS WTC - 38109'],
   menuType: 'Delivery',
   childBranch: ['38119'],
   childMenuType: 'Delivery BIS',
-  loadType: 'Nuevo menu',
+  loadType: 'Nuevo menú',
   versionMenu: 'No',
   description: 'Carga de filtros CP3',
   expectedMessage: expectedFilterLoadMessage,
@@ -215,7 +229,7 @@ export const cp15Data: FilterLoadCase = {
   country: ['MEXICO'],
   brand: ['BURGER KING'],
   branch: '7097',
-  aggregator: ['UBER EATS', 'DiDi', 'Rappi'],
+  aggregator: ['UBER EATS'],
   menuType: 'Delivery',
   loadType: 'Nuevo menu',
   versionMenu: 'No',
@@ -274,21 +288,13 @@ export const cp4Data: MenuLoadCase = {
   sourceRow: 5,
   country: ['MEXICO'],
   brand: 'STARBUCKS',
-  branch: '38109',
-  aggregator: ['UBER EATS', 'DiDi', 'Rappi', 'MOP'],
+  branch: 'STARBUCKS WTC - 38109',
+  aggregator: ['Rappi'],
   menuType: 'Delivery BIS',
   description: 'Carga de nuevo menu CP4',
   expectedMessage: expectedMenuLoadMessage,
   expectedEmailSubject: expectedMenuLoadEmailSubject,
-  expectedEmailBodyFields: [
-    { label: 'Marca', values: 'STARBUCKS', extractPattern: /Marca\s*=\s*([^,\r\n]+)/i },
-    { label: 'Agregador', values: 'UBER EATS', extractPattern: /Agregador\s*=\s*([^,\r\n]+)/i },
-    { label: 'Pais', values: 'MX', extractPattern: /Pa[ií]s\s*=\s*([A-Z]{2})\b/i },
-    { label: 'Sucursal', values: '38109', extractPattern: /SUCURSAL\s*:\s*(\d+)\b/i },
-    { label: 'ITEMS', values: 'ITEMS' },
-    { label: 'GRUPOS_MODIFICADORES', values: 'GRUPOS_MODIFICADORES' },
-    { label: 'MODIFICADORES', values: 'MODIFICADORES' },
-  ],
+  expectedEmailBodyFields: menuLoadEmailBodyFields('STARBUCKS', 'Rappi', '38109'),
 };
 
 export const cp16Data: MenuLoadCase = {
@@ -306,6 +312,8 @@ export const cp16Data: MenuLoadCase = {
   menuType: 'Delivery',
   description: 'Carga de nuevo menu CP16',
   expectedMessage: expectedMenuLoadMessage,
+  expectedEmailSubject: expectedMenuLoadEmailSubject,
+  expectedEmailBodyFields: menuLoadEmailBodyFields('BURGER KING', 'UBER EATS', '7097'),
 };
 
 export const cp28Data: MenuLoadCase = {
@@ -323,6 +331,8 @@ export const cp28Data: MenuLoadCase = {
   menuType: 'Delivery',
   description: 'Carga de nuevo menu CP28',
   expectedMessage: expectedMenuLoadMessage,
+  expectedEmailSubject: expectedMenuLoadEmailSubject,
+  expectedEmailBodyFields: menuLoadEmailBodyFields('VIPS', 'UBER EATS', '81284'),
 };
 
 export const cp40Data: MenuLoadCase = {
@@ -340,6 +350,8 @@ export const cp40Data: MenuLoadCase = {
   aggregator: ['UBER EATS', 'DiDi', 'Rappi', 'Alsea'],
   description: 'Carga de nuevo menu CP40',
   expectedMessage: expectedMenuLoadMessage,
+  expectedEmailSubject: expectedMenuLoadEmailSubject,
+  expectedEmailBodyFields: menuLoadEmailBodyFields('CHILIS', 'UBER EATS', '1075'),
 };
 
 export const cp5Data: CoreViewerCase = {
@@ -352,8 +364,8 @@ export const cp5Data: CoreViewerCase = {
   sourceRow: 6,
   country: ['MEXICO'],
   brand: 'STARBUCKS',
-  branch: '38109',
-  aggregator: 'UBER EATS',
+  branch: 'STARBUCKS WTC - 38109',
+  aggregator: 'Rappi',
   menuType: 'Delivery BIS',
 };
 
