@@ -3,6 +3,7 @@ import { LoginPage } from '@pages/auth/LoginPage';
 import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
 import type { GmailClient } from '@src/integrations/google/gmail-client';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import type { MenuLoadCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
@@ -68,11 +69,11 @@ export async function uploadMenuWorkflow(
     }));
   const loadResult = evaluateMenuLoadEmail(email);
   appendMenuLoadValidations(email, loadResult);
-  await attachGmailEvidence(testInfo, caseData, email);
+  await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
   throwIfMenuLoadFailed(loadResult);
 
   expect(prepared.targetPath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(`plantilla-referencia-menu-${caseData.id}`, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para generar el menú', prepared.targetPath), {
     path: prepared.targetPath,
     contentType: excelContentType(prepared.targetPath),
   });

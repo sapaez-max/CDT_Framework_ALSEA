@@ -3,6 +3,7 @@ import { LoginPage } from '@pages/auth/LoginPage';
 import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
 import type { GmailClient } from '@src/integrations/google/gmail-client';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import type { FilterLoadCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
@@ -61,11 +62,11 @@ export async function uploadFiltersWorkflow(
         bodyFields: caseData.expectedEmailBodyFields!,
         artifactScope: artifactScope(context),
       }));
-    await attachGmailEvidence(testInfo, caseData, email);
+    await attachGmailEvidence(testInfo, caseData, email, 'filter-load');
   }
 
   expect(prepared.targetPath, 'La plantilla cargada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(`plantilla-carga-filtros-${caseData.id}`, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla enviada para carga de filtros', prepared.targetPath), {
     path: prepared.targetPath,
     contentType: excelContentType(prepared.targetPath),
   });

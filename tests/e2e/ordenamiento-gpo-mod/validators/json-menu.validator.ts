@@ -117,7 +117,7 @@ function collectObjects(value: unknown): Record<string, unknown>[] {
 }
 
 async function attachJsonEvidence(testInfo: TestInfo, caseId: string, jsonText: string): Promise<void> {
-  await testInfo.attach(`menu-publicado-json-${caseId}`, {
+  await testInfo.attach('JSON publicado del menú', {
     body: Buffer.from(jsonText, 'utf8'),
     contentType: 'application/json',
   });

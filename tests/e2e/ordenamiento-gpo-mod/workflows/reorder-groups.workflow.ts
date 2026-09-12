@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
 import type { GmailClient } from '@src/integrations/google/gmail-client';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import { excelContentType } from '@src/reporting/email-evidence';
 import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
 import { CoreViewerPage } from '@pages/menu/CoreViewerPage';
@@ -11,7 +12,7 @@ import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';
 import {
   annotateExecutionContext,
-  annotateSelectedEntities,
+  annotateItemAndCategory,
   artifactScope,
   createExecutionContext,
   type ExecutionContext,
@@ -31,8 +32,6 @@ export async function reorderGroupsWorkflow(
 ): Promise<ExecutionContext> {
   return reorderWorkflow(page, caseData, testInfo, gmailClient, {
     editStep: `Copiar plantilla generada por ${caseData.sourceCaseId} y reordenar grupos`,
-    evidenceName: `plantilla-reorden-grupos-${caseData.id}`,
-    orderAnnotation: 'Orden esperado de grupos',
     edit: (excel, context) =>
       excel.reorderGroups(caseData.id, caseData.sourceCaseId, normalizeAggregatorColumn(caseData.aggregator), artifactScope(context)),
   });
@@ -46,8 +45,6 @@ export async function reorderModifiersWorkflow(
 ): Promise<ExecutionContext> {
   return reorderWorkflow(page, caseData, testInfo, gmailClient, {
     editStep: `Copiar plantilla generada por ${caseData.sourceCaseId} y reordenar modificadores`,
-    evidenceName: `plantilla-reorden-modificadores-${caseData.id}`,
-    orderAnnotation: 'Orden esperado de modificadores',
     edit: (excel, context) =>
       excel.reorderModifiers(caseData.id, caseData.sourceCaseId, normalizeAggregatorColumn(caseData.aggregator), artifactScope(context)),
   });
@@ -61,8 +58,6 @@ export async function reorderGroupsAndModifiersWorkflow(
 ): Promise<ExecutionContext> {
   return reorderWorkflow(page, caseData, testInfo, gmailClient, {
     editStep: `Copiar plantilla generada por ${caseData.sourceCaseId} y reordenar grupos y modificadores`,
-    evidenceName: `plantilla-reorden-grupos-modificadores-${caseData.id}`,
-    orderAnnotation: 'Orden esperado de grupos y modificadores',
     edit: (excel, context) =>
       excel.reorderGroupsAndModifiers(caseData.id, caseData.sourceCaseId, normalizeAggregatorColumn(caseData.aggregator), artifactScope(context)),
   });
@@ -75,8 +70,6 @@ async function reorderWorkflow(
   gmailClient: GmailClient,
   options: {
     editStep: string;
-    evidenceName: string;
-    orderAnnotation: string;
     edit: (excel: ExcelService, context: ExecutionContext) => ReturnType<ExcelService['reorderGroups']>;
   },
 ): Promise<ExecutionContext> {
@@ -107,15 +100,10 @@ async function reorderWorkflow(
   testInfo.annotations.push(
     { type: 'Plantilla origen', description: edited.sourcePath },
     { type: 'Plantilla reordenada', description: edited.outputPath },
-    { type: 'Categoria', description: expectation.categoryName },
-    {
-      type: options.orderAnnotation,
-      description: expectation.groups.map(group => `${group.id} ${group.name}: ${group.expectedOrder}`).join(' | '),
-    },
   );
-  annotateSelectedEntities(testInfo, context);
 
-  await testInfo.attach('Resumen visual de modificaciones', {
+
+  await testInfo.attach('Resumen comparativo de cambios en Excel', {
     body: Buffer.from(buildModificationEvidenceHtml({
       caseId: caseData.id,
       title: caseData.title,
@@ -150,7 +138,7 @@ async function reorderWorkflow(
     contentType: 'text/html',
   });
 
-  await testInfo.attach(options.evidenceName, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla Excel reordenada', edited.outputPath), {
     path: edited.outputPath,
     contentType: excelContentType(edited.outputPath),
   });
@@ -186,7 +174,7 @@ async function reorderWorkflow(
         bodyFields: caseData.expectedFilterEmailBodyFields,
         artifactScope: artifactScope(context),
       });
-      await attachGmailEvidence(testInfo, caseData, email);
+      await attachGmailEvidence(testInfo, caseData, email, 'filter-load');
     }
   });
 
@@ -217,7 +205,7 @@ async function reorderWorkflow(
     });
     const loadResult = evaluateMenuLoadEmail(email);
     appendMenuLoadValidations(email, loadResult);
-    await attachGmailEvidence(testInfo, caseData, email);
+    await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
     throwIfMenuLoadFailed(loadResult);
   });
 
@@ -227,6 +215,8 @@ async function reorderWorkflow(
     await visor.applyFilters(caseData);
     await visor.validateReorderedGroups(expectation);
   });
+
+  annotateItemAndCategory(testInfo, context);
 
   expect(edited.outputPath, 'La plantilla reordenada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
   return context;

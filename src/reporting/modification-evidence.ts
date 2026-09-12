@@ -25,10 +25,7 @@ export type ModificationEvidenceInput = {
   context: ModificationEvidenceContext;
   sourceFile: string;
   resultFile: string;
-  item?: {
-    id: string;
-    name?: string;
-  };
+  item?: ModificationEntityRow;
   category?: string;
   modifierGroups?: ModificationEntityRow[];
   modifiers?: ModificationEntityRow[];
@@ -38,6 +35,13 @@ type Column = {
   key: keyof ModificationEntityRow;
   label: string;
 };
+
+const itemColumns: Column[] = [
+  { key: 'id', label: 'Item ID' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'nameBefore', label: 'Nombre anterior' },
+  { key: 'nameAfter', label: 'Nombre nuevo' },
+];
 
 const groupColumns: Column[] = [
   { key: 'id', label: 'Grupo ID' },
@@ -62,7 +66,7 @@ const modifierColumns: Column[] = [
 export function buildModificationEvidenceHtml(input: ModificationEvidenceInput): string {
   const title = `${input.caseId} - Resumen de modificaciones`;
   const item = input.item
-    ? [input.item.id, input.item.name].filter(Boolean).join(' - ')
+    ? [input.item.id, input.item.nameAfter ?? input.item.name].filter(Boolean).join(' - ')
     : 'No disponible';
 
   return `<!doctype html>
@@ -103,6 +107,7 @@ export function buildModificationEvidenceHtml(input: ModificationEvidenceInput):
     </tbody>
   </table>
 
+  ${entityTable('Item modificado', input.item ? [input.item] : [], itemColumns)}
   ${entityTable('Grupos modificadores', input.modifierGroups ?? [], groupColumns)}
   ${entityTable('Modificadores', input.modifiers ?? [], modifierColumns)}
 

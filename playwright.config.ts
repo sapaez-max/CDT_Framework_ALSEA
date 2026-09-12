@@ -24,6 +24,7 @@ export default defineConfig({
   retries: env.retries,
   workers: env.workers,
   reporter: [
+    ['./src/reporting/attachment-display-name.reporter.ts'],
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'reports/results.json' }],

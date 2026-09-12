@@ -1,11 +1,12 @@
 import { fileTest as test, type TestInfo } from '@fixtures/base.fixture';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
 import type { TemplateEditCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import {
   annotateExecutionContext,
-  annotateSelectedEntities,
+  annotateItemAndCategory,
   artifactScope,
   createExecutionContext,
   type ExecutionContext,
@@ -32,6 +33,8 @@ export async function editTemplateWorkflow(
   context.files.edited = result.outputPath;
   context.product = { id: result.itemId, name: result.itemName };
   context.category = { name: result.categoryName };
+  const itemName = result.changes.find(change =>
+    change.sheet === 'Items' && change.field === 'Nombre Comercial');
   const groupName = result.changes.find(change =>
     change.sheet === 'GrupoModificador' && change.field === 'Nombre Comercial');
   const groupDescription = result.changes.find(change =>
@@ -58,15 +61,8 @@ export async function editTemplateWorkflow(
     { type: 'Plantilla editada', description: result.outputPath },
     { type: 'Agregador habilitado', description: caseData.aggregator },
   );
-  annotateSelectedEntities(testInfo, context);
-  for (const change of result.changes) {
-    testInfo.annotations.push({
-      type: `${change.sheet}!${change.cell}`,
-      description: `${change.field}: "${change.previousValue}" -> "${change.newValue}"`,
-    });
-  }
-
-  await testInfo.attach('Resumen visual de modificaciones', {
+  annotateItemAndCategory(testInfo, context);
+  await testInfo.attach('Resumen comparativo de cambios en Excel', {
     body: Buffer.from(buildModificationEvidenceHtml({
       caseId: caseData.id,
       title: caseData.title,
@@ -79,7 +75,11 @@ export async function editTemplateWorkflow(
       },
       sourceFile: result.sourcePath,
       resultFile: result.outputPath,
-      item: context.product,
+      item: {
+        id: result.itemId,
+        nameBefore: itemName?.previousValue,
+        nameAfter: itemName?.newValue,
+      },
       category: context.category?.name,
       modifierGroups: [{
         id: result.groupId,
@@ -97,7 +97,7 @@ export async function editTemplateWorkflow(
     contentType: 'text/html',
   });
 
-  await testInfo.attach(`plantilla-editada-${caseData.id}`, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla Excel editada', result.outputPath), {
     path: result.outputPath,
     contentType: excelContentType(result.outputPath),
   });

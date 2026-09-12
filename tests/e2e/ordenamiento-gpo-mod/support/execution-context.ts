@@ -69,7 +69,7 @@ export function annotateExecutionContext(testInfo: TestInfo, context: ExecutionC
   );
 }
 
-export function annotateSelectedEntities(testInfo: TestInfo, context: ExecutionContext): void {
+export function annotateItemAndCategory(testInfo: TestInfo, context: ExecutionContext): void {
   if (context.product) {
     testInfo.annotations.push({
       type: 'Item seleccionado',
@@ -82,26 +82,4 @@ export function annotateSelectedEntities(testInfo: TestInfo, context: ExecutionC
       description: context.category.name,
     });
   }
-  if (context.groupModifier) {
-    testInfo.annotations.push({
-      type: 'Grupo modificador seleccionado',
-      description: formatEntityChange(context.groupModifier),
-    });
-  }
-  if (context.modifiers.length > 0) {
-    testInfo.annotations.push({
-      type: 'Modificadores seleccionados',
-      description: context.modifiers.map(formatEntityChange).join(' | '),
-    });
-  }
-}
-
-function formatEntityChange(change: EntityChange): string {
-  const names = change.nameBefore !== undefined || change.nameAfter !== undefined
-    ? `nombre: "${change.nameBefore ?? ''}" -> "${change.nameAfter ?? ''}"`
-    : '';
-  const descriptions = change.descriptionBefore !== undefined || change.descriptionAfter !== undefined
-    ? `descripcion: "${change.descriptionBefore ?? ''}" -> "${change.descriptionAfter ?? ''}"`
-    : '';
-  return [change.id, names, descriptions].filter(Boolean).join(', ');
 }

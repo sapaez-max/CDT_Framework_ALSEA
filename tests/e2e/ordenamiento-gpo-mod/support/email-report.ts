@@ -1,12 +1,33 @@
 import type { TestInfo } from '@fixtures/base.fixture';
 import type { TemplateEmailResult } from '@src/integrations/google/gmail-client';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import { buildEmailEvidenceHtml, excelContentType } from '@src/reporting/email-evidence';
+
+type GmailEvidencePurpose = 'filter-load' | 'menu-load';
+
+const purposeTitles: Record<GmailEvidencePurpose, { validation: string; technical: string }> = {
+  'filter-load': {
+    validation: 'Validación del correo de carga de filtros',
+    technical: 'Detalle técnico del correo de carga de filtros',
+  },
+  'menu-load': {
+    validation: 'Validación del correo de carga de menú',
+    technical: 'Detalle técnico del correo de carga de menú',
+  },
+};
 
 export async function attachGmailEvidence(
   testInfo: TestInfo,
   caseData: Parameters<typeof buildEmailEvidenceHtml>[0]['caseData'],
   email: TemplateEmailResult,
+  purpose?: GmailEvidencePurpose,
 ): Promise<void> {
+  const titles = purpose
+    ? purposeTitles[purpose]
+    : {
+        validation: 'Validación del correo recibido',
+        technical: 'Detalle técnico de validación del correo',
+      };
   testInfo.annotations.push(
     { type: 'Correo recibido', description: email.receivedAt },
     { type: 'Remitente', description: email.from },
@@ -14,12 +35,12 @@ export async function attachGmailEvidence(
     { type: 'Adjunto recibido', description: email.attachmentName ?? 'No aplica' },
   );
 
-  await testInfo.attach(`evidencia-correo-${caseData.id}`, {
+  await testInfo.attach(titles.validation, {
     body: Buffer.from(buildEmailEvidenceHtml({ caseData, email }), 'utf8'),
     contentType: 'text/html',
   });
 
-  await testInfo.attach(`correo-${caseData.id}`, {
+  await testInfo.attach(titles.technical, {
     body: Buffer.from(JSON.stringify({
       messageId: email.messageId,
       threadId: email.threadId,
@@ -35,7 +56,7 @@ export async function attachGmailEvidence(
   });
 
   if (email.savedPath) {
-    await testInfo.attach(`plantilla-recibida-${caseData.id}`, {
+    await testInfo.attach(buildExcelAttachmentName('Plantilla Excel recibida', email.savedPath), {
       path: email.savedPath,
       contentType: excelContentType(email.savedPath),
     });

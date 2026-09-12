@@ -205,3 +205,22 @@ edicion cuando se ejecute la cadena completa.
 Organizar Page Objects por pantallas y pruebas por escenarios o flujos. Los specs
 deben importar `test` y `expect` desde `@fixtures/base.fixture`, utilizar assertions
 web-first y mantener URLs, contexto y selectores fuera de los casos de prueba.
+
+## Anotaciones del reporte
+
+Las anotaciones normales conservan el contexto de ejecucion, los archivos de referencia,
+el item seleccionado y su categoria. El detalle de grupos, modificadores, ordenes y
+celdas modificadas se consulta en el resumen visual HTML, el Excel y el JSON adjuntos.
+Los diagnosticos de fallo se adjuntan como JSON para mantener limpia esta seccion.
+Los casos CP5, CP17, CP29 y CP41 adjuntan `Comparacion de datos esperados y obtenidos
+en Visor CORE` con los valores leidos del Excel y los textos encontrados en la interfaz.
+
+Los adjuntos Excel muestran el nombre real del archivo con el formato
+`<descripcion funcional> - <archivo.xls|xlsx>`. Las evidencias de Gmail identifican
+el proceso que origino el mensaje: `Validacion del correo de carga de filtros`,
+`Detalle tecnico del correo de carga de filtros`, `Validacion del correo de carga de
+menu` o `Detalle tecnico del correo de carga de menu`. La descarga inicial conserva
+los nombres generales `Validacion del correo recibido` y `Detalle tecnico de validacion
+del correo`.
+El contexto que Playwright genera automaticamente cuando falla una prueba se muestra como
+`Contexto tecnico del fallo` en los reportes.

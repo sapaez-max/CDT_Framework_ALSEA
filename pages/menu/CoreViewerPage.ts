@@ -37,6 +37,19 @@ export type CoreViewerDiagnostic = {
   timestamp: string;
 };
 
+export type CoreViewerValidationRow = {
+  entity: string;
+  identifier?: string;
+  field: string;
+  expected: string;
+  actual: string;
+  passed: boolean;
+};
+
+export type CoreViewerValidationResult = {
+  rows: CoreViewerValidationRow[];
+};
+
 type VisibleCardData = {
   index: number;
   text: string;
@@ -64,17 +77,41 @@ export class CoreViewerPage extends BasePage {
     await this.selectCard(filters.branch, 'Sucursal');
   }
 
-  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<void> {
+  async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<CoreViewerValidationResult> {
+    const rows: CoreViewerValidationRow[] = [];
+
     await this.search(expectation.categoryName);
-    await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
+    const categoryActual = await this.expectVisiblePageText(
+      expectation.categoryName,
+      'Debe visualizarse la categoria registrada en la plantilla',
+    );
+    rows.push(comparisonRow('Categoría', undefined, 'Nombre', expectation.categoryName, categoryActual));
     await this.openVisibleResult(expectation.categoryName);
 
     await this.search(expectation.itemName);
-    await this.openExpectedProduct(expectation);
+    const productCardActual = await this.openExpectedProduct(expectation);
+    rows.push(comparisonRow(
+      'Producto',
+      expectation.itemId,
+      'Nombre en tarjeta seleccionada',
+      expectation.itemName,
+      productCardActual,
+    ));
+
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
-    await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
-    await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
-    await this.expectGeneratedChangeVisible(expectation);
+    const itemNameActual = await this.expectVisiblePreviewText(
+      expectation.itemName,
+      'Debe visualizarse el nombre del item en la previsualizacion',
+    );
+    rows.push(comparisonRow('Item', expectation.itemId, 'Nombre comercial', expectation.itemName, itemNameActual));
+    const itemDescriptionActual = await this.expectVisiblePreviewText(
+      expectation.itemDescription,
+      'Debe visualizarse la descripcion del item registrada en la plantilla',
+    );
+    rows.push(comparisonRow('Item', expectation.itemId, 'Descripción', expectation.itemDescription, itemDescriptionActual));
+    rows.push(...await this.expectGeneratedChangeVisible(expectation));
+
+    return { rows };
   }
 
   async openTemplateJson(expectation: CoreViewerTemplateExpectation): Promise<string> {
@@ -308,7 +345,7 @@ export class CoreViewerPage extends BasePage {
     await this.waitForLoadingToFinish();
   }
 
-  private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<void> {
+  private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<string> {
     const cards = this.productCards().filter({
       has: this.page.getByText(exactTextPattern(expectation.itemName)),
     });
@@ -345,9 +382,12 @@ export class CoreViewerPage extends BasePage {
     await expect(product, `Debe visualizarse el producto ${expectation.itemId}`).toBeVisible();
     await product.click();
     await this.waitForLoadingToFinish();
+    return matches[0].text;
   }
 
-  private async expectGeneratedChangeVisible(expectation: CoreViewerTemplateExpectation): Promise<void> {
+  private async expectGeneratedChangeVisible(
+    expectation: CoreViewerTemplateExpectation,
+  ): Promise<CoreViewerValidationRow[]> {
     const preview = this.productPreview();
     const group = preview.getByText(containsTextPattern(expectation.groupName));
 
@@ -356,15 +396,32 @@ export class CoreViewerPage extends BasePage {
         group,
         `Debe visualizarse el grupo modificador editado: ${expectation.groupName}`,
       ).toBeVisible();
-      return;
+      const actual = normalizeVisibleText(await group.textContent() ?? '');
+      return [comparisonRow(
+        'Grupo modificador',
+        expectation.groupId,
+        'Nombre comercial',
+        expectation.groupName,
+        actual,
+      )];
     }
 
+    const rows: CoreViewerValidationRow[] = [];
     for (const modifier of expectation.modifiers) {
+      const locator = preview.getByText(containsTextPattern(modifier.name));
       await expect(
-        preview.getByText(containsTextPattern(modifier.name)),
+        locator,
         `Debe visualizarse el modificador editado ${modifier.id}: ${modifier.name}`,
       ).toBeVisible();
+      rows.push(comparisonRow(
+        'Modificador',
+        modifier.id,
+        'Nombre comercial',
+        modifier.name,
+        normalizeVisibleText(await locator.textContent() ?? ''),
+      ));
     }
+    return rows;
   }
 
   private async openJsonView(): Promise<string> {
@@ -443,12 +500,16 @@ export class CoreViewerPage extends BasePage {
     return this.visibleCards().filter({ hasText: exactTextPattern(card.text) }).first();
   }
 
-  private async expectVisiblePageText(value: string, message: string): Promise<void> {
-    await expect(this.pageText(value), message).toBeVisible();
+  private async expectVisiblePageText(value: string, message: string): Promise<string> {
+    const locator = this.pageText(value);
+    await expect(locator, message).toBeVisible();
+    return normalizeVisibleText(await locator.textContent() ?? '');
   }
 
-  private async expectVisiblePreviewText(value: string, message: string): Promise<void> {
-    await expect(this.previewText(value), message).toBeVisible();
+  private async expectVisiblePreviewText(value: string, message: string): Promise<string> {
+    const locator = this.previewText(value);
+    await expect(locator, message).toBeVisible();
+    return normalizeVisibleText(await locator.textContent() ?? '');
   }
 
   private pageText(value: string): Locator {
@@ -486,6 +547,23 @@ export class CoreViewerPage extends BasePage {
       .filter({ hasText: name })
       .first();
   }
+}
+
+function comparisonRow(
+  entity: string,
+  identifier: string | undefined,
+  field: string,
+  expected: string,
+  actual: string,
+): CoreViewerValidationRow {
+  return {
+    entity,
+    identifier,
+    field,
+    expected,
+    actual,
+    passed: normalizeForComparison(actual).includes(normalizeForComparison(expected)),
+  };
 }
 
 function escapeRegExp(value: string): string {

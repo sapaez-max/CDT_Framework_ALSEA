@@ -1,11 +1,12 @@
 import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import type { JsonValidationCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import {
   annotateExecutionContext,
-  annotateSelectedEntities,
+  annotateItemAndCategory,
   artifactScope,
   createExecutionContext,
   type ExecutionContext,
@@ -54,20 +55,14 @@ export async function validateJsonWorkflow(
 
   testInfo.annotations.push(
     { type: 'Plantilla origen', description: prepared.sourcePath },
-    { type: 'Categoria', description: expectation.categoryName },
-    { type: 'Orden del grupo', description: String(expectation.groupOrder) },
-    {
-      type: 'Orden de modificadores',
-      description: expectation.modifiers.map(item => `${item.id}: ${item.order}`).join(', '),
-    },
   );
-  annotateSelectedEntities(testInfo, context);
+  annotateItemAndCategory(testInfo, context);
 
   await test.step('Validar JSON publicado del menu', () =>
     validatePublishedMenuJson(page, caseData, expectation, testInfo));
 
   expect(prepared.targetPath, 'La plantilla usada como referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(`plantilla-json-${caseData.id}`, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para validar el JSON', prepared.targetPath), {
     path: prepared.targetPath,
     contentType: excelContentType(prepared.targetPath),
   });

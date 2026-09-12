@@ -1,11 +1,12 @@
 import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { excelContentType } from '@src/reporting/email-evidence';
+import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import type { CoreViewerCase } from '../data/types';
 import { ExcelService } from '../services/excel.service';
 import {
   annotateExecutionContext,
-  annotateSelectedEntities,
+  annotateItemAndCategory,
   artifactScope,
   createExecutionContext,
   type ExecutionContext,
@@ -53,25 +54,14 @@ export async function validateVisorWorkflow(
   }));
   testInfo.annotations.push(
     { type: 'Plantilla origen', description: prepared.sourcePath },
-    { type: 'Categoria', description: expectation.categoryName },
-    {
-      type: 'Precios del item',
-      description: expectation.itemPrices.map(price => `$${price.toFixed(2)}`).join(', ') || 'No informados',
-    },
-    { type: 'Daypart del item', description: expectation.itemDaypart ?? 'No informado' },
-    { type: 'Orden del grupo', description: String(expectation.groupOrder) },
-    {
-      type: 'Orden de modificadores',
-      description: expectation.modifiers.map(item => `${item.id}: ${item.order}`).join(', '),
-    },
   );
-  annotateSelectedEntities(testInfo, context);
+  annotateItemAndCategory(testInfo, context);
 
   await test.step('Validar en Visor CORE los datos de la plantilla', () =>
     validateCoreViewer(page, caseData, expectation, testInfo));
 
   expect(prepared.targetPath, 'La plantilla validada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(`plantilla-visor-core-${caseData.id}`, {
+  await testInfo.attach(buildExcelAttachmentName('Plantilla esperada para validación en Visor CORE', prepared.targetPath), {
     path: prepared.targetPath,
     contentType: excelContentType(prepared.targetPath),
   });
