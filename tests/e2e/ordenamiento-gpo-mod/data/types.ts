@@ -146,3 +146,7 @@ export type ReorderModifiersCase = Omit<ReorderGroupsCase, 'scenario'> & {
 export type ReorderGroupsAndModifiersCase = Omit<ReorderGroupsCase, 'scenario'> & {
   scenario: 'reorderGroupsAndModifiers';
 };
+
+export type UpdateExistingMenuCase = Omit<ReorderGroupsCase, 'scenario'> & {
+  scenario: 'updateExistingMenu';
+};

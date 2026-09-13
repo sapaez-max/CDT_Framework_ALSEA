@@ -20,7 +20,7 @@ export async function validateJsonWorkflow(
   testInfo: TestInfo,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
+  annotateExecutionContext(testInfo, context, caseData);
 
   await test.step('Validar sesion autenticada', async () => {
     await goToLanding(page);
@@ -53,9 +53,6 @@ export async function validateJsonWorkflow(
     nameAfter: modifier.name,
   }));
 
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: prepared.sourcePath },
-  );
   annotateItemAndCategory(testInfo, context);
 
   await test.step('Validar JSON publicado del menu', () =>

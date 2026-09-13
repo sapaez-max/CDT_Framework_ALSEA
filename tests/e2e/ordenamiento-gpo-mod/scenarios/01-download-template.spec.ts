@@ -5,11 +5,11 @@ import { downloadTemplateWorkflow } from '../workflows/download-template.workflo
 
 for (const caseData of downloadTemplateCases) {
   test.describe(
-    `@catalogo @menu @administracion @descarga-plantilla @ordenamiento-gpo-mod @${caseData.id}`,
-    { tag: caseData.brandTag },
+    caseData.datasetId,
+    { tag: ['@ordenamiento-gpo-mod', '@descarga-plantilla', `@${caseData.id}`, caseData.brandTag] },
     () => {
       test.describe.configure({ timeout: env.gmail.pollTimeoutMs + 120_000 });
-      test(`@${caseData.id} ${caseData.id} - ${caseData.title} - ${caseData.datasetId}`, async ({ page, gmailClient }, testInfo) => {
+      test(`${caseData.id} - ${caseData.title}`, async ({ page, gmailClient }, testInfo) => {
         await downloadTemplateWorkflow(page, gmailClient, testInfo, caseData);
       });
     },

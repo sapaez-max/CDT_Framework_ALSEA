@@ -5,13 +5,13 @@ import { uploadFiltersWorkflow } from '../workflows/upload-filters.workflow';
 
 for (const caseData of uploadFiltersCases) {
   test.describe(
-    `@catalogo @menu @administracion @carga-filtros @ordenamiento-gpo-mod @${caseData.id}`,
-    { tag: caseData.brandTag },
+    caseData.datasetId,
+    { tag: ['@ordenamiento-gpo-mod', '@carga-filtros', `@${caseData.id}`, caseData.brandTag] },
     () => {
       if (caseData.expectedEmailSubject) {
         test.describe.configure({ timeout: env.gmail.pollTimeoutMs + 120_000 });
       }
-      test(`@${caseData.id} ${caseData.id} - ${caseData.title} - ${caseData.datasetId}`, async ({ page, gmailClient }, testInfo) => {
+      test(`${caseData.id} - ${caseData.title}`, async ({ page, gmailClient }, testInfo) => {
         await uploadFiltersWorkflow(page, caseData, testInfo, gmailClient);
       });
     },

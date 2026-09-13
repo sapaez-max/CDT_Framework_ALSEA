@@ -19,6 +19,7 @@ import {
 } from '../support/execution-context';
 import {
   appendMenuLoadValidations,
+  appendMenuPortalValidation,
   evaluateMenuLoadEmail,
   throwIfMenuLoadFailed,
 } from '../support/menu-load-email-result';
@@ -74,7 +75,7 @@ async function reorderWorkflow(
   },
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
+  annotateExecutionContext(testInfo, context, caseData);
 
   const excel = new ExcelService();
   const edited = await test.step(
@@ -97,11 +98,7 @@ async function reorderWorkflow(
     id: modifier.id,
     nameAfter: modifier.name,
   })));
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: edited.sourcePath },
-    { type: 'Plantilla reordenada', description: edited.outputPath },
-  );
-
+  annotateItemAndCategory(testInfo, context);
 
   await testInfo.attach('Resumen comparativo de cambios en Excel', {
     body: Buffer.from(buildModificationEvidenceHtml({
@@ -190,12 +187,6 @@ async function reorderWorkflow(
       description: caseData.menuDescription,
       expectedMessage: caseData.expectedMenuMessage,
     });
-    testInfo.annotations.push({
-      type: 'Resultado inicial del portal',
-      description: portalResult.status === 'endpoint-timeout'
-        ? `${portalResult.notification}. El resultado final se valida mediante Gmail.`
-        : portalResult.notification,
-    });
 
     const email = await gmail.waitForCase(baseline, {
       caseId: caseData.id,
@@ -204,6 +195,7 @@ async function reorderWorkflow(
       artifactScope: artifactScope(context),
     });
     const loadResult = evaluateMenuLoadEmail(email);
+    appendMenuPortalValidation(email, portalResult);
     appendMenuLoadValidations(email, loadResult);
     await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
     throwIfMenuLoadFailed(loadResult);
@@ -215,8 +207,6 @@ async function reorderWorkflow(
     await visor.applyFilters(caseData);
     await visor.validateReorderedGroups(expectation);
   });
-
-  annotateItemAndCategory(testInfo, context);
 
   expect(edited.outputPath, 'La plantilla reordenada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
   return context;

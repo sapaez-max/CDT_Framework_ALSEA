@@ -10,6 +10,7 @@ import {
   chainedReorderGroupsTestPattern,
   chainedReorderModifiersTestPattern,
   chainedReorderGroupsAndModifiersTestPattern,
+  chainedUpdateExistingMenuTestPattern,
   getRoleProjectConfigs,
 } from './src/config/roles';
 
@@ -24,6 +25,7 @@ export default defineConfig({
   retries: env.retries,
   workers: env.workers,
   reporter: [
+    ['./src/reporting/functional-flow.reporter.ts'],
     ['./src/reporting/attachment-display-name.reporter.ts'],
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -114,6 +116,15 @@ export default defineConfig({
     {
       name: 'ordenamiento-reorden-grupos-modificadores',
       testMatch: chainedReorderGroupsAndModifiersTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-actualizar-menu',
+      testMatch: chainedUpdateExistingMenuTestPattern,
       use: {
         ...devices['Desktop Chrome'],
         storageState: env.authEnabled ? env.authStatePath : undefined,

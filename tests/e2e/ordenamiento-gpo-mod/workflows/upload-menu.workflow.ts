@@ -16,6 +16,7 @@ import {
 } from '../support/execution-context';
 import {
   appendMenuLoadValidations,
+  appendMenuPortalValidation,
   evaluateMenuLoadEmail,
   throwIfMenuLoadFailed,
 } from '../support/menu-load-email-result';
@@ -28,9 +29,11 @@ export async function uploadMenuWorkflow(
   gmailClient: GmailClient,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
-  await goToLanding(page);
-  await new LoginPage(page).expectAuthenticated();
+  annotateExecutionContext(testInfo, context, caseData);
+  await test.step('Acceder al portal con la sesion autorizada', async () => {
+    await goToLanding(page);
+    await new LoginPage(page).expectAuthenticated();
+  });
 
   const prepared = await test.step(
     `Copiar plantilla generada por ${caseData.sourceCaseId}`,
@@ -41,24 +44,18 @@ export async function uploadMenuWorkflow(
     ),
   );
   context.files.uploaded = prepared.targetPath;
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: prepared.sourcePath },
-    { type: 'Plantilla de referencia', description: prepared.targetPath },
-  );
-
   const menuPage = new MenuAdministrationPage(page);
-  await menuPage.openMenuLoad();
   const gmail = new GmailService(gmailClient);
   const baseline = await test.step('Capturar linea base de Gmail', () =>
     gmail.captureCaseBaseline());
 
-  const portalResult = await menuPage.loadMenu(caseData);
-  testInfo.annotations.push({
-    type: 'Resultado inicial del portal',
-    description: portalResult.status === 'endpoint-timeout'
-      ? `${portalResult.notification}. El resultado final se valida mediante Gmail.`
-      : portalResult.notification,
-  });
+  const portalResult = await test.step(
+    'Publicar el menu para la marca y sucursal seleccionadas',
+    async () => {
+      await menuPage.openMenuLoad();
+      return menuPage.loadMenu(caseData);
+    },
+  );
 
   const email = await test.step('Esperar y validar correo de carga de menu', () =>
     gmail.waitForCase(baseline, {
@@ -68,6 +65,7 @@ export async function uploadMenuWorkflow(
       artifactScope: artifactScope(context),
     }));
   const loadResult = evaluateMenuLoadEmail(email);
+  appendMenuPortalValidation(email, portalResult);
   appendMenuLoadValidations(email, loadResult);
   await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
   throwIfMenuLoadFailed(loadResult);

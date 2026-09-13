@@ -54,6 +54,10 @@ type VisibleCardData = {
   index: number;
   text: string;
 };
+type VisibleTreeEntity = {
+  title: string;
+  depth: number;
+};
 
 export class CoreViewerPage extends BasePage {
   constructor(page: Page) {
@@ -127,68 +131,97 @@ export class CoreViewerPage extends BasePage {
     return this.openJsonView();
   }
 
-  async validateReorderedGroups(expectation: ReorderedGroupsExpectation): Promise<void> {
-    await this.search(expectation.categoryName);
-    await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
-    await this.openVisibleResult(expectation.categoryName);
-
-    await this.search(expectation.itemName);
-    await this.openExpectedProduct({
-      inputPath: expectation.inputPath,
-      itemId: expectation.itemId,
-      itemName: expectation.itemName,
-      itemDescription: expectation.itemDescription,
-      itemPrices: [],
-      categoryName: expectation.categoryName,
-      groupId: expectation.groups[0]?.id ?? '',
-      groupName: expectation.groups[0]?.name ?? '',
-      groupDescription: '',
-      groupOrder: expectation.groups[0]?.expectedOrder ?? 0,
-      modifiers: expectation.groups[0]?.modifiers ?? [],
-    });
-    await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
-    await this.expectVisiblePreviewText(expectation.itemName, 'Debe visualizarse el nombre del item en la previsualizacion');
-    await this.expectVisiblePreviewText(expectation.itemDescription, 'Debe visualizarse la descripcion del item registrada en la plantilla');
-
+  async validateReorderedGroups(
+    expectation: ReorderedGroupsExpectation,
+    options: { validateDuplicates?: boolean } = {},
+  ): Promise<void> {
+    await this.openReorderedProduct(expectation);
     const preview = this.productPreview();
+    const visibleEntities = await this.visibleTreeEntities(preview);
+    const visibleGroups = visibleEntities.filter(entity => entity.depth === 0);
+    const expectedGroupNames = expectation.groups.map(group => normalizeForComparison(group.name));
+    const expectedGroupNameSet = new Set(expectedGroupNames);
+    const actualExpectedGroups = visibleGroups
+      .map(group => normalizeForComparison(group.title))
+      .filter(name => expectedGroupNameSet.has(name));
+
+    expect(
+      actualExpectedGroups,
+      'Los grupos modificadores deben mostrarse en el orden ascendente definido por la columna Posicion',
+    ).toEqual(expectedGroupNames);
+
     for (const group of expectation.groups) {
-      await expect(
-        preview.getByText(containsTextPattern(group.name)),
-        `Debe visualizarse el grupo ${group.id}: ${group.name}`,
-      ).toBeVisible();
-    }
-
-    const previewText = normalizeVisibleText(await preview.textContent() ?? '');
-    const groupPositions = expectation.groups.map(group => ({
-      group,
-      position: previewText.indexOf(normalizeVisibleText(group.name)),
-    }));
-    expect(
-      groupPositions.every(item => item.position >= 0),
-      `Todos los grupos esperados deben existir en el arbol: ${expectation.groups.map(group => group.name).join(', ')}`,
-    ).toBe(true);
-    expect(
-      groupPositions.map(item => item.position),
-      'Los grupos modificadores deben mostrarse en el orden definido en la plantilla',
-    ).toEqual([...groupPositions.map(item => item.position)].sort((left, right) => left - right));
-
-    for (let index = 0; index < groupPositions.length; index += 1) {
-      const current = groupPositions[index];
-      const next = groupPositions[index + 1];
-      const segment = previewText.slice(current.position, next?.position ?? previewText.length);
-      const modifierPositions = visibleModifierPositionsInOrder(
-        segment,
-        current.group.modifiers.map(modifier => modifier.name),
-      );
+      const normalizedGroupName = normalizeForComparison(group.name);
+      const groupIndex = visibleEntities.findIndex(entity =>
+        entity.depth === 0 && normalizeForComparison(entity.title) === normalizedGroupName);
       expect(
-        modifierPositions.every(position => position >= 0),
-        `Los modificadores del grupo ${current.group.name} deben seguir visibles: ${current.group.modifiers.map(modifier => modifier.name).join(', ')}`,
-      ).toBe(true);
+        groupIndex,
+        'Debe visualizarse el grupo ' + group.id + ': ' + group.name,
+      ).toBeGreaterThanOrEqual(0);
+
+      const nextGroupOffset = visibleEntities
+        .slice(groupIndex + 1)
+        .findIndex(entity => entity.depth === 0);
+      const groupEnd = nextGroupOffset < 0
+        ? visibleEntities.length
+        : groupIndex + 1 + nextGroupOffset;
+      const visibleModifiers = visibleEntities
+        .slice(groupIndex + 1, groupEnd)
+        .map(entity => normalizeForComparison(entity.title));
+      const expectedModifierNames = group.modifiers.map(modifier => normalizeForComparison(modifier.name));
+      const expectedModifierNameSet = new Set(expectedModifierNames);
+      const actualExpectedModifiers = visibleModifiers.filter(name => expectedModifierNameSet.has(name));
+
       expect(
-        modifierPositions,
-        `Los modificadores del grupo ${current.group.name} deben conservar su orden original`,
-      ).toEqual([...modifierPositions].sort((left, right) => left - right));
+        actualExpectedModifiers,
+        'Los modificadores del grupo ' + group.name
+          + ' deben mostrarse en el orden ascendente definido por la columna Posicion',
+      ).toEqual(expectedModifierNames);
+
+      if (options.validateDuplicates) {
+        for (const [name, expectedCount] of countNormalizedNames(
+          group.modifiers.map(modifier => modifier.name),
+        )) {
+          const actualCount = visibleModifiers.filter(modifier => modifier === name).length;
+          expect(
+            actualCount,
+            'El modificador ' + name + ' debe aparecer ' + expectedCount
+              + ' vez/veces dentro del grupo ' + group.name,
+          ).toBe(expectedCount);
+        }
+      }
     }
+  }
+
+  private async visibleTreeEntities(preview: Locator): Promise<VisibleTreeEntity[]> {
+    const tree = preview.getByRole('tree');
+    await expect(tree, 'Debe existir el arbol de grupos modificadores en la previsualizacion').toBeVisible();
+
+    const entities = await tree
+      .locator('.ant-tree-treenode, .rc-tree-treenode')
+      .evaluateAll(nodes => nodes.map(node => {
+        const directChildren = Array.from(node.children);
+        const content = directChildren.find(child =>
+          child.classList.contains('ant-tree-node-content-wrapper')
+          || child.classList.contains('rc-tree-node-content-wrapper'));
+        const indent = directChildren.find(child =>
+          child.classList.contains('ant-tree-indent')
+          || child.classList.contains('rc-tree-indent'));
+        return {
+          title: content?.getAttribute('title') ?? '',
+          depth: indent?.children.length ?? 0,
+        };
+      }).filter(entity => entity.title));
+
+    expect(
+      entities.length,
+      'El arbol debe exponer los nombres exactos de grupos y modificadores',
+    ).toBeGreaterThan(0);
+    return entities;
+  }
+
+  async openCurrentProductJson(): Promise<string> {
+    return this.openJsonView();
   }
 
   async collectDiagnostic(
@@ -316,6 +349,19 @@ export class CoreViewerPage extends BasePage {
 
   private async selectMatchedCard(card: Locator, candidate: string, stepName: string): Promise<void> {
     await expect(card, `Debe existir la tarjeta ${candidate} para ${stepName}`).toBeVisible();
+
+    if (stepName === 'Sucursal') {
+      const navigation = this.page.waitForURL(/\/menu\/visor-core\/items\/?\?search=/i, { waitUntil: 'commit' });
+      await card.click();
+      await navigation;
+      await this.waitForLoadingToFinish();
+      await expect(
+        this.page.getByText(/Selecciona una categor[ií]a/i),
+        `La sucursal ${candidate} debe abrir su listado de categorias`,
+      ).toBeVisible();
+      return;
+    }
+
     await card.click();
     await this.clearSearch();
     await this.waitForLoadingToFinish();
@@ -343,6 +389,39 @@ export class CoreViewerPage extends BasePage {
     await expect(result, `Debe existir el resultado ${value}`).toBeVisible();
     await result.click();
     await this.waitForLoadingToFinish();
+  }
+
+  private async openReorderedProduct(expectation: ReorderedGroupsExpectation): Promise<void> {
+    await this.search(expectation.categoryName);
+    await this.expectVisiblePageText(
+      expectation.categoryName,
+      'Debe visualizarse la categoria registrada en la plantilla',
+    );
+    await this.openVisibleResult(expectation.categoryName);
+
+    await this.search(expectation.itemName);
+    await this.openExpectedProduct({
+      inputPath: expectation.inputPath,
+      itemId: expectation.itemId,
+      itemName: expectation.itemName,
+      itemDescription: expectation.itemDescription,
+      itemPrices: [],
+      categoryName: expectation.categoryName,
+      groupId: expectation.groups[0]?.id ?? '',
+      groupName: expectation.groups[0]?.name ?? '',
+      groupDescription: '',
+      groupOrder: expectation.groups[0]?.expectedOrder ?? 0,
+      modifiers: expectation.groups[0]?.modifiers ?? [],
+    });
+    await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
+    await this.expectVisiblePreviewText(
+      expectation.itemName,
+      'Debe visualizarse el nombre del item en la previsualizacion',
+    );
+    await this.expectVisiblePreviewText(
+      expectation.itemDescription,
+      'Debe visualizarse la descripcion del item registrada en la plantilla',
+    );
   }
 
   private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<string> {
@@ -578,21 +657,13 @@ function containsTextPattern(value: string): RegExp {
   return new RegExp(escapeRegExp(value), 'i');
 }
 
-function visibleModifierPositionsInOrder(segment: string, modifierNames: string[]): number[] {
-  let cursor = 0;
-  return modifierNames.map((modifierName) => {
-    const normalizedName = normalizeVisibleText(modifierName);
-    const remainingSegment = segment.slice(cursor);
-    const pattern = new RegExp(`${escapeRegExp(normalizedName)}\\s*[-–—]`, 'i');
-    const match = pattern.exec(remainingSegment);
-    const position = match
-      ? cursor + match.index
-      : segment.indexOf(normalizedName, cursor);
-    if (position >= 0) {
-      cursor = position + normalizedName.length;
-    }
-    return position;
-  });
+function countNormalizedNames(names: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const name of names) {
+    const normalizedName = normalizeForComparison(name);
+    counts.set(normalizedName, (counts.get(normalizedName) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function matchesExactTrailingCode(optionText: string, value: string): boolean {

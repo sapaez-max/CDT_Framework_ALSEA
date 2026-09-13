@@ -20,7 +20,7 @@ export async function downloadTemplateWorkflow(
   caseData: TemplateDownloadCase,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
+  annotateExecutionContext(testInfo, context, caseData);
 
   await test.step('Validar sesion autenticada', async () => {
     await goToLanding(page);

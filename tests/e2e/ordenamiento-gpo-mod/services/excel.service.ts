@@ -1,9 +1,16 @@
 import { readCoreViewerExpectation } from '@utils/core-viewer-template';
 import {
+  copyExcelFromCurrentCaseOrPrevious,
   copyExcelFromPreviousCase,
+  getExcelFromCurrentCaseOrPrevious,
   type ArtifactScope,
 } from '@utils/case-artifact-manager';
-import { reorderGroupsAndModifiers, reorderOnlyGroups, reorderOnlyModifiers } from '@utils/group-reorder-template';
+import {
+  readGroupsAndModifiersExpectation,
+  reorderGroupsAndModifiers,
+  reorderOnlyGroups,
+  reorderOnlyModifiers,
+} from '@utils/group-reorder-template';
 import { editDownloadedTemplate } from '@utils/template-editor';
 
 export class ExcelService {
@@ -25,6 +32,34 @@ export class ExcelService {
 
   reorderGroupsAndModifiers(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
     return reorderGroupsAndModifiers({ caseId, sourceCaseId, aggregator, artifactScope: scope });
+  }
+
+  inspectExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    const sourcePath = getExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    return {
+      sourcePath,
+      expectation: readGroupsAndModifiersExpectation(sourcePath, aggregator),
+    };
+  }
+
+  updateExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    return reorderGroupsAndModifiers({
+      caseId,
+      sourceCaseId,
+      aggregator,
+      artifactScope: scope,
+      sourceCopy,
+      strategy: 'selective-update',
+    });
   }
 
   readViewerExpectation(filePath: string) {

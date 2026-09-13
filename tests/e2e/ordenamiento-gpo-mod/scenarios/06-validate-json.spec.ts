@@ -4,10 +4,10 @@ import { validateJsonWorkflow } from '../workflows/validate-json.workflow';
 
 for (const caseData of validateJsonCases) {
   test.describe(
-    `@catalogo @menu @json @ordenamiento-gpo-mod @${caseData.id}`,
-    { tag: caseData.brandTag },
+    caseData.datasetId,
+    { tag: ['@ordenamiento-gpo-mod', '@json', `@${caseData.id}`, caseData.brandTag] },
     () => {
-      test(`@${caseData.id} ${caseData.id} - ${caseData.title} - ${caseData.datasetId}`, async ({ page }, testInfo) => {
+      test(`${caseData.id} - ${caseData.title}`, async ({ page }, testInfo) => {
         await validateJsonWorkflow(page, caseData, testInfo);
       });
     },

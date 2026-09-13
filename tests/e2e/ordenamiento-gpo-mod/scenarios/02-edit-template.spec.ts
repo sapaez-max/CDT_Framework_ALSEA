@@ -4,10 +4,10 @@ import { editTemplateWorkflow } from '../workflows/edit-template.workflow';
 
 for (const caseData of editTemplateCases) {
   test.describe(
-    `@catalogo @menu @administracion @edicion-plantilla @ordenamiento-gpo-mod @${caseData.id}`,
-    { tag: caseData.brandTag },
+    caseData.datasetId,
+    { tag: ['@ordenamiento-gpo-mod', '@edicion-plantilla', `@${caseData.id}`, caseData.brandTag] },
     () => {
-      test(`@${caseData.id} ${caseData.id} - ${caseData.title} - ${caseData.datasetId}`, async ({}, testInfo) => {
+      test(`${caseData.id} - ${caseData.title}`, async ({}, testInfo) => {
         await editTemplateWorkflow(caseData, testInfo);
       });
     },

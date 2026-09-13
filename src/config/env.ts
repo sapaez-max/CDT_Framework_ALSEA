@@ -59,6 +59,7 @@ export const env = {
   navigationTimeoutMs: numberFromEnv('NAVIGATION_TIMEOUT_MS', 50_000),
   fileOperationTimeoutMs: numberFromEnv('FILE_OPERATION_TIMEOUT_MS', 50_000),
   manualAuthTimeoutMs: numberFromEnv('MANUAL_AUTH_TIMEOUT_MS', 300_000),
+  visorPropagationTimeoutMs: numberFromEnv('VISOR_PROPAGATION_TIMEOUT_MS', 300_000),
 
   gmail: {
     enabled: booleanFromEnv('GMAIL_ENABLED', false),

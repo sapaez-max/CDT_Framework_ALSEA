@@ -21,7 +21,7 @@ export async function validateVisorWorkflow(
   sourceContext?: ExecutionContext,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
+  annotateExecutionContext(testInfo, context, caseData);
   await test.step('Validar sesion autenticada', async () => {
     await goToLanding(page);
     await new LoginPage(page).expectAuthenticated();
@@ -52,9 +52,6 @@ export async function validateVisorWorkflow(
     id: modifier.id,
     nameAfter: modifier.name,
   }));
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: prepared.sourcePath },
-  );
   annotateItemAndCategory(testInfo, context);
 
   await test.step('Validar en Visor CORE los datos de la plantilla', () =>

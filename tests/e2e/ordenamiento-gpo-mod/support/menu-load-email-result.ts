@@ -1,3 +1,4 @@
+import type { MenuLoadPortalResult } from '@pages/menu/MenuAdministrationPage';
 import type { EmailFunctionalStatus, EmailValidationResult, TemplateEmailResult } from '@src/integrations/google/gmail-client';
 
 type CounterLabel = 'ITEMS' | 'GRUPOS_MODIFICADORES' | 'MODIFICADORES';
@@ -24,6 +25,18 @@ export function evaluateMenuLoadEmail(email: TemplateEmailResult): EmailFunction
       : `La carga del menu no fue exitosa. El correo recibido reporta ITEMS: ${items?.rawValue ?? 'No encontrado'}.`,
     counters,
   };
+}
+
+export function appendMenuPortalValidation(
+  email: TemplateEmailResult,
+  portalResult: MenuLoadPortalResult,
+): void {
+  email.validations.push({
+    label: 'Resultado inicial del portal',
+    expected: 'Solicitud aceptada o timeout del endpoint pendiente de confirmacion por correo',
+    actual: portalResult.notification,
+    passed: portalResult.status === 'accepted' || portalResult.status === 'endpoint-timeout',
+  });
 }
 
 export function appendMenuLoadValidations(

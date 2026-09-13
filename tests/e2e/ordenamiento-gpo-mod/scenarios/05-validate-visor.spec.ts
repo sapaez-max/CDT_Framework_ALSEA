@@ -4,10 +4,10 @@ import { validateVisorWorkflow } from '../workflows/validate-visor.workflow';
 
 for (const caseData of validateVisorCases) {
   test.describe(
-    `@catalogo @menu @visor-core @ordenamiento-gpo-mod @${caseData.id}`,
-    { tag: caseData.brandTag },
+    caseData.datasetId,
+    { tag: ['@ordenamiento-gpo-mod', '@visor-core', `@${caseData.id}`, caseData.brandTag] },
     () => {
-      test(`@${caseData.id} ${caseData.id} - ${caseData.title} - ${caseData.datasetId}`, async ({ page }, testInfo) => {
+      test(`${caseData.id} - ${caseData.title}`, async ({ page }, testInfo) => {
         await validateVisorWorkflow(page, caseData, testInfo);
       });
     },

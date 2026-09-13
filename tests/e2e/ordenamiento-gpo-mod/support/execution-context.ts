@@ -56,17 +56,39 @@ export function artifactScope(context: ExecutionContext): ArtifactScope {
   return { runId: context.runId, datasetId: context.datasetId };
 }
 
-export function annotateExecutionContext(testInfo: TestInfo, context: ExecutionContext): void {
+type FunctionalAnnotationData = CaseMetadata & Partial<{
+  downloadDate: string;
+  loadType: string | string[];
+  versionMenu: string | string[];
+  description: string;
+  filterDescription: string;
+  menuDescription: string;
+}>;
+
+export function annotateExecutionContext(
+  testInfo: TestInfo,
+  context: ExecutionContext,
+  caseData: FunctionalAnnotationData,
+): void {
   testInfo.annotations.push(
-    { type: 'Run ID', description: context.runId },
     { type: 'Juego de datos', description: context.datasetId },
-    { type: 'Escenario funcional', description: context.scenario },
     { type: 'Pais', description: context.country },
     { type: 'Marca', description: context.brand },
-    { type: 'Sucursal', description: context.branch },
-    { type: 'Agregador', description: context.aggregator },
-    { type: 'Tipo de menu', description: context.menuType },
   );
+
+  if (caseData.scenario !== 'uploadFilters') {
+    addFunctionalAnnotation(testInfo, 'Sucursal', context.branch);
+  }
+  if (caseData.scenario !== 'downloadTemplate') {
+    addFunctionalAnnotation(testInfo, 'Agregador', context.aggregator);
+  }
+  addFunctionalAnnotation(testInfo, 'Tipo de menu', context.menuType);
+  addFunctionalAnnotation(testInfo, 'Fecha seleccionada', caseData.downloadDate);
+  addFunctionalAnnotation(testInfo, 'Tipo de carga', firstValue(caseData.loadType));
+  addFunctionalAnnotation(testInfo, 'Versionar menu', firstValue(caseData.versionMenu));
+  addFunctionalAnnotation(testInfo, 'Descripcion', caseData.description);
+  addFunctionalAnnotation(testInfo, 'Descripcion de filtros', caseData.filterDescription);
+  addFunctionalAnnotation(testInfo, 'Descripcion de menu', caseData.menuDescription);
 }
 
 export function annotateItemAndCategory(testInfo: TestInfo, context: ExecutionContext): void {
@@ -82,4 +104,13 @@ export function annotateItemAndCategory(testInfo: TestInfo, context: ExecutionCo
       description: context.category.name,
     });
   }
+}
+
+
+function addFunctionalAnnotation(testInfo: TestInfo, type: string, description?: string): void {
+  if (description) testInfo.annotations.push({ type, description });
+}
+
+function firstValue(value?: string | string[]): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }

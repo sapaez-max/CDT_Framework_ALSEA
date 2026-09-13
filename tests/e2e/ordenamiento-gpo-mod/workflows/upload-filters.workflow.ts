@@ -23,9 +23,11 @@ export async function uploadFiltersWorkflow(
   gmailClient?: GmailClient,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
-  await goToLanding(page);
-  await new LoginPage(page).expectAuthenticated();
+  annotateExecutionContext(testInfo, context, caseData);
+  await test.step('Acceder al portal con la sesion autorizada', async () => {
+    await goToLanding(page);
+    await new LoginPage(page).expectAuthenticated();
+  });
 
   const prepared = await test.step(
     `Copiar plantilla generada por ${caseData.sourceCaseId}`,
@@ -37,13 +39,7 @@ export async function uploadFiltersWorkflow(
   );
   context.files.edited = prepared.sourcePath;
   context.files.uploaded = prepared.targetPath;
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: prepared.sourcePath },
-    { type: 'Plantilla usada en carga de filtros', description: prepared.targetPath },
-  );
-
   const menuPage = new MenuAdministrationPage(page);
-  await menuPage.openFilterLoad();
   const gmail = gmailClient ? new GmailService(gmailClient) : undefined;
   const baseline = caseData.expectedEmailSubject
     ? await test.step('Capturar linea base de Gmail', async () => {
@@ -52,7 +48,10 @@ export async function uploadFiltersWorkflow(
       })
     : undefined;
 
-  await menuPage.loadFilters(caseData, prepared.targetPath);
+  await test.step('Cargar la plantilla de filtros con los datos seleccionados', async () => {
+    await menuPage.openFilterLoad();
+    await menuPage.loadFilters(caseData, prepared.targetPath);
+  });
 
   if (caseData.expectedEmailSubject && caseData.expectedEmailBodyFields && baseline && gmail) {
     const email = await test.step('Esperar y validar correo de carga de filtros', () =>

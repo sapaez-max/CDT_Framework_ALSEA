@@ -13,7 +13,7 @@ export const scenarioDefaults = {
     descriptionPrefix: 'Carga de nuevo menú',
   },
   updateExistingMenu: {
-    loadType: 'Actualizar menú',
+    loadType: 'Actualización',
     versionMenu: 'Si',
   },
 } as const;

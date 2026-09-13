@@ -3,6 +3,7 @@ import xlsx, { type WorkBook, type WorkSheet } from 'xlsx';
 import {
   copyExcelFromPreviousCase,
   type ArtifactScope,
+  type CaseExcelCopy,
 } from './case-artifact-manager';
 import type { CoreViewerModifierExpectation } from './core-viewer-template';
 
@@ -11,6 +12,8 @@ export type GroupReorderRequest = {
   sourceCaseId: string;
   aggregator: string;
   artifactScope: ArtifactScope;
+  sourceCopy?: CaseExcelCopy;
+  strategy?: 'complete' | 'selective-update';
 };
 
 export type ReorderedGroupExpectation = {
@@ -45,6 +48,7 @@ export type ReorderChange = {
   entityType: 'modifierGroup' | 'modifier';
   entityId: string;
   entityName: string;
+  parentGroupId?: string;
   previousValue: string;
   newValue: string;
 };
@@ -154,7 +158,7 @@ export function reorderOnlyGroups(request: GroupReorderRequest): GroupReorderRes
         name: group.name,
         previousOrder: group.order,
         expectedOrder: reorderedOrders[index],
-        modifiers: group.modifiers,
+        modifiers: [...group.modifiers].sort((left, right) => left.order - right.order),
       };
     })
     .sort((left, right) => left.expectedOrder - right.expectedOrder);
@@ -258,6 +262,7 @@ export function reorderOnlyModifiers(request: GroupReorderRequest): GroupReorder
       entityType: 'modifier',
       entityId: modifier.id,
       entityName: modifier.name,
+      parentGroupId: targetGroup.id,
     }));
   });
 
@@ -284,7 +289,7 @@ export function reorderOnlyModifiers(request: GroupReorderRequest): GroupReorder
             };
           })
           .sort((left, right) => left.order - right.order)
-        : group.modifiers;
+        : [...group.modifiers].sort((left, right) => left.order - right.order);
 
       return {
         id: group.id,
@@ -313,7 +318,7 @@ export function reorderOnlyModifiers(request: GroupReorderRequest): GroupReorder
 }
 
 export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupReorderResult {
-  const { sourcePath, targetPath: inputPath } = copyExcelFromPreviousCase({
+  const { sourcePath, targetPath: inputPath } = request.sourceCopy ?? copyExcelFromPreviousCase({
     fromCase: request.sourceCaseId,
     toCase: request.caseId,
     scope: request.artifactScope,
@@ -372,7 +377,9 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
   const changes: ReorderChange[] = [];
 
   orderedGroups.forEach((group, index) => {
-    changes.push(writeCell(groups, group.row, groupOrderColumn, reorderedGroupOrders[index], {
+    const newOrder = reorderedGroupOrders[index];
+    if (request.strategy === 'selective-update' && newOrder === group.order) return;
+    changes.push(writeCell(groups, group.row, groupOrderColumn, newOrder, {
       entityType: 'modifierGroup',
       entityId: group.id,
       entityName: group.name,
@@ -393,21 +400,27 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
   }
 
   const expectedModifiersByGroup = new Map<string, CoreViewerModifierExpectation[]>();
-  for (const group of orderedGroups) {
+  for (const [groupIndex, group] of orderedGroups.entries()) {
     const reorderedModifierOrders = group.modifiers.map(modifier => modifier.order).reverse();
     const expectedModifiers = group.modifiers.map((modifier, index) => {
+      const shouldModify = request.strategy !== 'selective-update'
+        || (groupIndex === 0 && (index === 0 || index === group.modifiers.length - 1));
+      const expectedOrder = shouldModify ? reorderedModifierOrders[index] : modifier.order;
       const row = modifierRowById.get(`${group.id}::${modifier.id}`);
       if (row === undefined) {
         throw new Error(`No se encontro la fila del modificador ${modifier.id} del grupo ${group.id} para reordenar.`);
       }
-      changes.push(writeCell(modifiers, row, modifierOrderColumn, reorderedModifierOrders[index], {
-        entityType: 'modifier',
-        entityId: modifier.id,
-        entityName: modifier.name,
-      }));
+      if (shouldModify && expectedOrder !== modifier.order) {
+        changes.push(writeCell(modifiers, row, modifierOrderColumn, expectedOrder, {
+          entityType: 'modifier',
+          entityId: modifier.id,
+          entityName: modifier.name,
+          parentGroupId: group.id,
+        }));
+      }
       return {
         ...modifier,
-        order: reorderedModifierOrders[index],
+        order: expectedOrder,
       };
     }).sort((left, right) => left.order - right.order);
     expectedModifiersByGroup.set(group.id, expectedModifiers);
@@ -462,6 +475,60 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
       categoryName: selection.categoryName,
       groups: expectationGroups,
     },
+  };
+}
+
+
+export function readGroupsAndModifiersExpectation(
+  inputPath: string,
+  aggregator: string,
+): ReorderedGroupsExpectation {
+  const workbook = xlsx.readFile(inputPath, { cellStyles: true });
+  const items = requiredTable(workbook, 'Items');
+  const categories = requiredTable(workbook, 'Categorias');
+  const groups = requiredTable(workbook, 'GrupoModificador');
+  const modifiers = requiredTable(workbook, 'Modificadores');
+
+  const itemColumn = requiredColumn(items, ['Item']);
+  const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
+  const itemDescriptionColumn = requiredColumn(items, ['Descripcion']);
+  const selection = selectItemWithThreeGroups({
+    items,
+    categories,
+    groups,
+    modifiers,
+    itemColumn,
+    categoryItemColumn: requiredColumn(categories, ['Item']),
+    categoryNameColumn: requiredColumn(categories, ['Categoria', 'Nombre Categoria']),
+    groupIdColumn: requiredColumn(groups, ['Grupo Modificador']),
+    groupNameColumn: requiredColumn(groups, ['Nombre Comercial']),
+    groupOrderColumn: requiredColumn(groups, ['Orden', 'Posicion']),
+    groupAggregatorColumn: requiredColumn(groups, [aggregator]),
+    modifierItemColumn: requiredColumn(modifiers, ['Item']),
+    modifierGroupColumn: requiredColumn(modifiers, ['Grupo Modificador']),
+    modifierIdColumn: requiredColumn(modifiers, ['Modificador']),
+    modifierNameColumn: requiredColumn(modifiers, ['Nombre Comercial Modificador']),
+    modifierOrderColumn: requiredColumn(modifiers, ['Orden', 'Posicion']),
+    modifierAggregatorColumn: requiredColumn(modifiers, [aggregator]),
+    aggregator,
+    minimumModifiersPerGroup: 2,
+  });
+
+  return {
+    inputPath,
+    itemId: selection.itemId,
+    itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]),
+    itemDescription: displayValue(items.rows[selection.itemRow][itemDescriptionColumn]),
+    categoryName: selection.categoryName,
+    groups: selection.groupRows
+      .map(group => ({
+        id: group.id,
+        name: group.name,
+        previousOrder: group.order,
+        expectedOrder: group.order,
+        modifiers: [...group.modifiers].sort((left, right) => left.order - right.order),
+      }))
+      .sort((left, right) => left.expectedOrder - right.expectedOrder),
   };
 }
 
@@ -603,7 +670,8 @@ function writeCell(
   row: number,
   column: number,
   newValue: string | number,
-  entity: Pick<ReorderChange, 'entityType' | 'entityId' | 'entityName'>,
+  entity: Pick<ReorderChange, 'entityType' | 'entityId' | 'entityName'>
+    & Partial<Pick<ReorderChange, 'parentGroupId'>>,
 ): ReorderChange {
   const previousValue = table.rows[row][column];
   const cell = xlsx.utils.encode_cell({ r: row, c: column });

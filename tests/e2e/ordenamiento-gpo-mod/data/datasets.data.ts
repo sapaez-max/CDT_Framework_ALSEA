@@ -59,6 +59,7 @@ function currentScenarioApplicability() {
     reorderGroups: true,
     reorderModifiers: true,
     reorderGroupsAndModifiers: true,
+    updateExistingMenu: true,
   } as const;
 }
 

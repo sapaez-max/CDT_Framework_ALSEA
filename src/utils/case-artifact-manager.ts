@@ -114,6 +114,62 @@ export function copyExcelFromPreviousCase({
   return { sourcePath, targetPath };
 }
 
+export function copyExcelFromCurrentCaseOrPrevious({
+  previousCase,
+  currentCase,
+  scope,
+}: {
+  previousCase: string;
+  currentCase: string;
+  scope: ArtifactScope;
+}): CaseExcelCopy {
+  const sourceCandidate = getExcelFromCurrentCaseOrPrevious({
+    previousCase,
+    currentCase,
+    scope,
+  });
+  const filename = path.basename(sourceCandidate);
+  const content = fs.readFileSync(sourceCandidate);
+  const directory = prepareCaseDownloadDirectory(currentCase, scope);
+  const sourceDirectory = path.join(directory, 'source');
+  fs.mkdirSync(sourceDirectory, { recursive: true });
+
+  const sourcePath = path.join(sourceDirectory, filename);
+  const targetPath = path.join(directory, filename);
+  fs.writeFileSync(sourcePath, content);
+  fs.writeFileSync(targetPath, content);
+
+  return { sourcePath, targetPath };
+}
+
+export function getExcelFromCurrentCaseOrPrevious({
+  previousCase,
+  currentCase,
+  scope,
+}: {
+  previousCase: string;
+  currentCase: string;
+  scope: ArtifactScope;
+}): string {
+  const currentDirectory = caseDownloadDirectory(currentCase, scope);
+  const currentFiles = fs.existsSync(currentDirectory)
+    ? fs.readdirSync(currentDirectory)
+      .filter(file => excelPattern.test(file))
+      .map(file => path.join(currentDirectory, file))
+      .filter(file => fs.statSync(file).isFile())
+    : [];
+
+  if (currentFiles.length > 1) {
+    throw new Error(
+      'Se esperaba un unico Excel para ' + currentCase + ', pero se encontraron '
+        + currentFiles.length + ' archivos: '
+        + currentFiles.map(file => path.basename(file)).join(', ') + '.',
+    );
+  }
+
+  return currentFiles[0] ?? getLatestExcelForCase(previousCase, scope);
+}
+
 function safeSegment(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_');
 }

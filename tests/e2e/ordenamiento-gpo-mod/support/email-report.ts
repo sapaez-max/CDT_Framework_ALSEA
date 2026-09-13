@@ -28,13 +28,6 @@ export async function attachGmailEvidence(
         validation: 'Validación del correo recibido',
         technical: 'Detalle técnico de validación del correo',
       };
-  testInfo.annotations.push(
-    { type: 'Correo recibido', description: email.receivedAt },
-    { type: 'Remitente', description: email.from },
-    { type: 'Asunto', description: email.subject },
-    { type: 'Adjunto recibido', description: email.attachmentName ?? 'No aplica' },
-  );
-
   await testInfo.attach(titles.validation, {
     body: Buffer.from(buildEmailEvidenceHtml({ caseData, email }), 'utf8'),
     contentType: 'text/html',

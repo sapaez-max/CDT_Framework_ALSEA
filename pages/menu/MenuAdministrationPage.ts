@@ -627,22 +627,25 @@ export class MenuAdministrationPage extends BasePage {
   }
 
   private async fieldContainsValue(field: Locator, values: string[]): Promise<boolean> {
-    const currentText = await field.evaluate((element) => {
+    const currentValue = await field.evaluate((element) => {
       const htmlElement = element as HTMLElement;
+      const nativeSelect = element instanceof HTMLSelectElement ? element : null;
+      const selectedItem = htmlElement.querySelector('.ant-select-selection-item');
       const input = element instanceof HTMLInputElement ? element : htmlElement.querySelector('input');
-      const antSelect = htmlElement.closest('.ant-select') as HTMLElement | null;
 
-      return [
-        htmlElement.textContent,
-        input?.value,
-        input?.getAttribute('aria-label'),
-        input?.getAttribute('placeholder'),
-        antSelect?.textContent,
-      ].filter(Boolean).join(' ');
+      return nativeSelect?.selectedOptions[0]?.text
+        || selectedItem?.getAttribute('title')
+        || selectedItem?.textContent
+        || input?.value
+        || '';
     }).catch(() => '');
-    const normalizedCurrentText = normalizeForComparison(currentText || '');
+    const normalizedCurrentValue = normalizeForComparison(currentValue);
 
-    return values.some((value) => normalizedCurrentText.includes(normalizeForComparison(value)));
+    return values.some((value) => {
+      const normalizedExpectedValue = normalizeForComparison(value);
+      return normalizedCurrentValue === normalizedExpectedValue
+        || matchesTerminalNumericIdentifier(normalizedCurrentValue, normalizedExpectedValue);
+    });
   }
 
   private async fieldEqualsValue(field: Locator, values: string[]): Promise<boolean> {
@@ -750,6 +753,10 @@ function optionDisplayName(option: VisibleOptionData): string {
   return option.text || option.title || option.ariaLabel;
 }
 
+function matchesTerminalNumericIdentifier(currentValue: string, expectedValue: string): boolean {
+  return /^\d+$/.test(expectedValue)
+    && new RegExp(`(?:^|\\D)${escapeRegExp(expectedValue)}$`).test(currentValue);
+}
 function matchesExactTrailingCode(optionText: string, value: string): boolean {
   const normalizedValue = normalizeForComparison(value);
   const normalizedText = normalizeForComparison(optionText);

@@ -17,6 +17,7 @@ import type {
   TemplateDownloadCase,
   TemplateEditCase,
   TestDataset,
+  UpdateExistingMenuCase,
 } from './types';
 
 const expectedTemplateRequestMessage = /confirmaci[oó]n|correo|enviad[ao]|plantilla|[eé]xito|correctamente/i;
@@ -262,6 +263,44 @@ export const reorderGroupsAndModifiersCases: ReorderGroupsAndModifiersCase[] = e
           { label: 'Modificadores', values: 'Modificadores' },
         ],
       } : {}),
+    };
+  });
+
+export const updateExistingMenuCases: UpdateExistingMenuCase[] = enabledDatasets('updateExistingMenu')
+  .map(dataset => {
+    const brand = getBrand(dataset.brandId);
+    const caseMetadata = metadata(dataset, 'updateExistingMenu');
+
+    return {
+      ...caseMetadata,
+      scenario: 'updateExistingMenu',
+      sourceCaseId: getPreviousCaseId(dataset.id, 'updateExistingMenu'),
+      country: dataset.country,
+      brand: brand.name,
+      branch: dataset.branchCode,
+      aggregator: displayAggregator(dataset.aggregator),
+      menuType: dataset.menuType,
+      loadType: scenarioDefaults.updateExistingMenu.loadType,
+      versionMenu: scenarioDefaults.updateExistingMenu.versionMenu,
+      filterDescription: `Actualizacion de menu existente ${caseMetadata.id}`,
+      menuDescription: `Publicacion de menu actualizado ${caseMetadata.id}`,
+      expectedFilterMessage: expectedFilterLoadMessage,
+      expectedMenuMessage: expectedMenuLoadMessage,
+      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
+      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
+        brand.name,
+        displayAggregator(dataset.aggregator),
+        dataset.branchCode,
+      ),
+      expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
+      expectedFilterEmailBodyFields: [
+        { label: 'Pais', values: dataset.country },
+        { label: 'Marca', values: brand.name },
+        { label: 'Tipo menu', values: dataset.menuType },
+        { label: 'Items', values: 'Items' },
+        { label: 'GrupoModificadores', values: 'GrupoModificadores' },
+        { label: 'Modificadores', values: 'Modificadores' },
+      ],
     };
   });
 

@@ -17,7 +17,7 @@ export async function editTemplateWorkflow(
   testInfo: TestInfo,
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  annotateExecutionContext(testInfo, context);
+  annotateExecutionContext(testInfo, context, caseData);
   const excel = new ExcelService();
   const result = await test.step(
     `Localizar la plantilla de ${caseData.sourceCaseId} y editar una copia`,
@@ -56,11 +56,6 @@ export async function editTemplateWorkflow(
     };
   });
 
-  testInfo.annotations.push(
-    { type: 'Plantilla origen', description: result.sourcePath },
-    { type: 'Plantilla editada', description: result.outputPath },
-    { type: 'Agregador habilitado', description: caseData.aggregator },
-  );
   annotateItemAndCategory(testInfo, context);
   await testInfo.attach('Resumen comparativo de cambios en Excel', {
     body: Buffer.from(buildModificationEvidenceHtml({

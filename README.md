@@ -62,7 +62,7 @@ un unico resultado vigente. El reporte incluye evidencia HTML legible, los datos
 la combinacion ejecutada y el Excel recibido. Nunca se adjuntan
 `credentials.json`, `token.json` ni tokens OAuth.
 
-Los bloques implementados siguen una cadena de cinco casos por marca:
+Los bloques iniciales implementados siguen una cadena de cinco casos por marca:
 descarga, edicion, carga de filtros, carga de menu y validacion en Visor CORE. CP2, CP14, CP26 y CP38 toman
 respectivamente las plantillas de CP1, CP13, CP25 y CP37, limpian solo su carpeta,
 copian el Excel anterior al espacio de su corrida y juego de datos y editan esa copia. La
@@ -86,12 +86,14 @@ siempre deben recibir y validar un correo nuevo de carga exitosa. Cualquier otra
 notificacion de error o la ausencia del correo dentro del tiempo configurado hace
 fallar el caso.
 
-Playwright separa estos casos en proyectos por etapa:
-`ordenamiento-descarga`, `ordenamiento-edicion`, `ordenamiento-carga-filtros`,
-`ordenamiento-carga-menu` y `ordenamiento-visor-core`. Cada CP puede ejecutarse de forma individual; la
-relacion entre casos es solo de artefacto. Si se ejecuta CP2, CP3 o CP4 sin que
-exista exactamente un Excel del caso anterior, el helper de artefactos falla con
-un mensaje descriptivo en lugar de ejecutar automaticamente el CP previo. La
+Playwright separa los casos en proyectos por etapa, desde `ordenamiento-descarga` hasta
+`ordenamiento-actualizar-menu`. Cada CP puede ejecutarse de forma individual; la
+relacion entre casos es solo de artefacto. En su primera ejecucion, CP10/CP22/CP34/CP46
+requieren el Excel del escenario 9. Las ejecuciones siguientes reutilizan el ultimo
+Excel del propio caso, invierten nuevamente las posiciones y mantienen una copia del
+estado de origen en el subdirectorio source. Los demas CP dependientes requieren
+exactamente un Excel del caso anterior; si falta, el helper falla con un mensaje
+descriptivo en lugar de ejecutar automaticamente el CP previo. La
 validacion de horarios de Vigencia queda fuera de estos casos hasta confirmar la
 regla con el cliente.
 
@@ -113,19 +115,60 @@ Los casos tambien se pueden filtrar por marca:
 - `npx playwright test --grep "@vips"`
 - `npx playwright test --grep "@chilis"`
 
+Cada prueba de ordenamiento utiliza una taxonomía de cuatro etiquetas:
+
+| Tipo | Etiqueta | Ejemplo |
+| --- | --- | --- |
+| Funcionalidad general | `@ordenamiento-gpo-mod` | Ejecuta toda la solución de ordenamiento |
+| Escenario funcional | Una etiqueta según la operación | `@descarga-plantilla`, `@carga-menu`, `@visor-core` |
+| Caso de prueba | Identificador de la matriz | `@CP13` |
+| Marca | Marca del juego de datos | `@starbucks`, `@burger-king`, `@vips`, `@chilis` |
+
+Los tags de escenario disponibles son:
+
+- `@descarga-plantilla`
+- `@edicion-plantilla`
+- `@carga-filtros`
+- `@carga-menu`
+- `@visor-core`
+- `@json`
+- `@reorden-grupos`
+- `@reorden-modificadores`
+- `@reorden-grupos-modificadores`
+- `@actualizar-menu`
+
+Se pueden combinar filtros. Por ejemplo, para ejecutar las descargas de Burger King:
+
+- `node node_modules/playwright/cli.js test --grep '(?=.*@descarga-plantilla)(?=.*@burger-king)'`
+
 En PowerShell, para filtrar varios CP sin que `|` sea interpretado por `npx.cmd`, se
 puede llamar directamente al CLI:
 
 - `node node_modules/playwright/cli.js test --grep '@CP1|@CP13|@CP25|@CP37'`
+- `node node_modules/playwright/cli.js test --project=ordenamiento-actualizar-menu --grep '@CP10\b' --workers=1`
 
 Los reportes se generan en `playwright-report`, `reports` y `artifacts`. Estas rutas
 tambien estan excluidas del repositorio.
+
+Cada resultado de los diez escenarios implementados incorpora el adjunto HTML
+`Flujo funcional`. Esta sección traduce los pasos reales de Playwright a lenguaje
+de usuario y marca cada uno como `COMPLETADO`, `FALLÓ` o `NO EJECUTADO`. Si el caso
+se detiene, el último paso alcanzado muestra el fallo y los posteriores permanecen
+como no ejecutados.
+
+La sección Annotations queda reservada para los datos funcionales usados en la
+ejecución: juego de datos, país, marca, sucursal, agregador, tipo de menú y, cuando
+aplican, fecha, tipo de carga, versionamiento, descripciones, item y categoría.
+Las rutas de archivos, datos del correo, resultados del portal e identificadores
+técnicos permanecen en sus evidencias HTML o JSON y no se duplican en Annotations.
 
 Los tiempos del navegador se configuran mediante `TEST_TIMEOUT_MS`,
 `ACTION_TIMEOUT_MS`, `EXPECT_TIMEOUT_MS`, `NAVIGATION_TIMEOUT_MS` y
 `FILE_OPERATION_TIMEOUT_MS`. La linea base utiliza 80, 30, 35, 50 y 50 segundos
 respectivamente para tolerar conexiones lentas. La espera de Gmail se mantiene
-independiente en `GMAIL_POLL_TIMEOUT_MS`.
+independiente en `GMAIL_POLL_TIMEOUT_MS`. CP10/CP22/CP34/CP46 también usan
+`VISOR_PROPAGATION_TIMEOUT_MS` (cinco minutos por defecto) para reconsultar el
+Visor CORE hasta que la publicación se refleje.
 
 ## Dropdowns dinamicos
 
@@ -139,19 +182,40 @@ tecnicos de overlay/renderizado, sin ocultar datos inexistentes ni ambiguedades.
 ## Alcance actual
 
 La linea base contiene configuracion DEV, sesion Admin manual reutilizable,
-fixtures, diagnostico de fallos y reporting. Estan implementados los casos de
-descarga CP1, CP13, CP25 y CP37; edicion CP2, CP14, CP26 y CP38; carga de filtros
-CP3, CP15, CP27 y CP39; carga de menu CP4, CP16, CP28 y CP40; y validacion en
-Visor CORE CP5, CP17, CP29 y CP41. Los demas escenarios permanecen pendientes.
+fixtures, diagnostico de fallos y reporting. Estan implementados los diez primeros
+escenarios por marca: descarga, edicion, carga de filtros, carga de menu, validacion
+en Visor CORE, validacion JSON, tres modalidades de reordenamiento y modificacion
+de un menu existente. Esto cubre CP1-CP10, CP13-CP22, CP25-CP34 y CP37-CP46.
+Conservacion del orden y multiples grupos permanecen pendientes.
 
 ## Organizacion por escenarios y juegos de datos
 
 Los 48 CP documentales se representan mediante 12 escenarios funcionales y cuatro
-juegos de datos principales. Los cinco escenarios implementados se encuentran en
+juegos de datos principales. Los diez escenarios implementados se encuentran en
 `tests/e2e/ordenamiento-gpo-mod/scenarios`; cada archivo genera cuatro resultados
 independientes conservando el numero de CP y el tag de la marca.
-Los cuatro juegos actuales habilitan explicitamente estos cinco escenarios; CP6 a
-CP12 por marca se habilitaran cuando su flujo y sus datos especificos esten confirmados.
+Los cuatro juegos actuales habilitan explicitamente estos diez escenarios. Los
+escenarios 11 y 12 se habilitaran cuando su flujo y sus datos esten confirmados.
+
+El escenario de modificacion de menu existente usa la plantilla generada por el
+escenario 9 en su primera ejecucion y el ultimo Excel del propio CP en las siguientes.
+Captura y valida el JSON vigente del producto antes de publicar. Después invierte
+las posiciones del primer y último grupo entre tres grupos seleccionados, mantiene
+el grupo intermedio como control y cambia únicamente el primer y último modificador
+del primer grupo; los demás grupos y modificadores actúan como controles sin cambio.
+Carga filtros con `Actualización` y `Versionar menu = Si`, publica el menú y espera
+hasta `VISOR_PROPAGATION_TIMEOUT_MS` mientras reconsulta el Visor CORE.
+
+La validación final compara tres estados: JSON inicial, estado esperado construido
+con los cambios del Excel y JSON final. Verifica identidad del producto, categoría,
+cantidad e IDs únicos de todos los grupos y modificadores, nombres, posiciones
+modificadas y posiciones de control. Un elemento faltante, duplicado, un cambio no
+solicitado o una posición que no se propagó hace fallar el caso. El reporte adjunta
+la comparación semántica inicial/esperada/final, la cobertura de entidades modificadas
+y controles, el resumen de cambios en Excel, ambas plantillas y las evidencias
+separadas de los correos de filtros y menú. Los datos dinámicos de descripción
+comparten un único identificador local con formato
+`AUTO_CP10_YYYYMMDD_HHmmss` por ejecución.
 
 Los juegos de datos principales proporcionados por el cliente son:
 
