@@ -12,6 +12,7 @@ import {
 } from '@src/reporting/menu-update-evidence';
 import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
 import { formatExecutionTimestamp } from '@src/utils/execution-timestamp';
+import type { PreserveOrderResult } from '@src/utils/group-reorder-template';
 import {
   buildExpectedMenuSnapshot,
   compareMenuSnapshots,
@@ -19,7 +20,7 @@ import {
   type MenuSnapshot,
   type MenuSnapshotComparison,
 } from '@src/utils/menu-update-snapshot';
-import type { UpdateExistingMenuCase } from '../data/types';
+import type { PreserveOrderCase, UpdateExistingMenuCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';
@@ -44,6 +45,25 @@ export async function updateExistingMenuWorkflow(
   testInfo: TestInfo,
   gmailClient: GmailClient,
 ): Promise<ExecutionContext> {
+  return existingMenuWorkflow(page, caseData, testInfo, gmailClient, 'selective-update');
+}
+
+export async function preserveOrderWorkflow(
+  page: Page,
+  caseData: PreserveOrderCase,
+  testInfo: TestInfo,
+  gmailClient: GmailClient,
+): Promise<ExecutionContext> {
+  return existingMenuWorkflow(page, caseData, testInfo, gmailClient, 'preserve-order');
+}
+
+async function existingMenuWorkflow(
+  page: Page,
+  caseData: UpdateExistingMenuCase | PreserveOrderCase,
+  testInfo: TestInfo,
+  gmailClient: GmailClient,
+  mode: 'selective-update' | 'preserve-order',
+): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
   const executionTimestamp = formatExecutionTimestamp();
   const executionIdentifier = `AUTO_${caseData.id}_${executionTimestamp}`;
@@ -55,14 +75,22 @@ export async function updateExistingMenuWorkflow(
 
   const excel = new ExcelService();
   const aggregatorColumn = normalizeAggregatorColumn(caseData.aggregator);
+  const preservesOrder = mode === 'preserve-order';
   const sourceState = await test.step(
     'Identificar la plantilla del menu existente sin modificarla',
-    () => excel.inspectExistingMenu(
-      caseData.id,
-      caseData.sourceCaseId,
-      aggregatorColumn,
-      artifactScope(context),
-    ),
+    () => preservesOrder
+      ? excel.inspectCompleteExistingMenu(
+        caseData.id,
+        caseData.sourceCaseId,
+        aggregatorColumn,
+        artifactScope(context),
+      )
+      : excel.inspectExistingMenu(
+        caseData.id,
+        caseData.sourceCaseId,
+        aggregatorColumn,
+        artifactScope(context),
+      ),
   );
   context.product = {
     id: sourceState.expectation.itemId,
@@ -86,15 +114,28 @@ export async function updateExistingMenuWorkflow(
   const baselineSnapshot = parseMenuSnapshot(beforeJson);
 
   const edited = await test.step(
-    'Crear una copia y modificar selectivamente el menu existente',
-    () => excel.updateExistingMenu(
-      caseData.id,
-      caseData.sourceCaseId,
-      aggregatorColumn,
-      artifactScope(context),
-    ),
+    preservesOrder
+      ? 'Crear una copia, conservar el orden y cambiar el nombre del producto'
+      : 'Crear una copia y modificar selectivamente el menu existente',
+    () => preservesOrder
+      ? excel.reloadPreservingOrder(
+        caseData.id,
+        caseData.sourceCaseId,
+        aggregatorColumn,
+        artifactScope(context),
+        executionIdentifier,
+      )
+      : excel.updateExistingMenu(
+        caseData.id,
+        caseData.sourceCaseId,
+        aggregatorColumn,
+        artifactScope(context),
+      ),
   );
   const { expectation } = edited;
+  const itemChange = 'itemChange' in edited
+    ? (edited as PreserveOrderResult).itemChange
+    : undefined;
   expect(expectation.itemId, 'La copia editada debe corresponder al item del baseline').toBe(sourceState.expectation.itemId);
   expect(expectation.categoryName, 'La copia editada debe conservar la categoria del baseline')
     .toBe(sourceState.expectation.categoryName);
@@ -127,37 +168,63 @@ export async function updateExistingMenuWorkflow(
       },
       sourceFile: edited.sourcePath,
       resultFile: edited.outputPath,
-      item: context.product,
+      item: itemChange ? {
+        id: itemChange.entityId,
+        nameBefore: itemChange.previousValue,
+        nameAfter: itemChange.newValue,
+      } : context.product,
       category: context.category.name,
-      modifierGroups: edited.changes
-        .filter(change => change.entityType === 'modifierGroup')
-        .map(change => ({
-          id: change.entityId,
-          name: change.entityName,
-          orderBefore: change.previousValue,
-          orderAfter: change.newValue,
-        })),
-      modifiers: edited.changes
-        .filter(change => change.entityType === 'modifier')
-        .map(change => ({
-          id: change.entityId,
-          name: change.entityName,
-          orderBefore: change.previousValue,
-          orderAfter: change.newValue,
-        })),
+      modifierGroups: preservesOrder
+        ? expectation.groups.map(group => ({
+          id: group.id,
+          name: group.name,
+          orderBefore: group.previousOrder,
+          orderAfter: group.expectedOrder,
+        }))
+        : edited.changes
+          .filter(change => change.entityType === 'modifierGroup')
+          .map(change => ({
+            id: change.entityId,
+            name: change.entityName,
+            orderBefore: change.previousValue,
+            orderAfter: change.newValue,
+          })),
+      modifiers: preservesOrder
+        ? expectation.groups.flatMap(group => group.modifiers.map(modifier => ({
+          id: modifier.id,
+          name: modifier.name,
+          orderBefore: modifier.order,
+          orderAfter: modifier.order,
+        })))
+        : edited.changes
+          .filter(change => change.entityType === 'modifier')
+          .map(change => ({
+            id: change.entityId,
+            name: change.entityName,
+            orderBefore: change.previousValue,
+            orderAfter: change.newValue,
+          })),
     })),
     contentType: 'text/html',
   });
-  await testInfo.attach(buildExcelAttachmentName('Plantilla Excel original del menú', edited.sourcePath), {
+  const sourceAttachmentName = preservesOrder
+    ? 'Plantilla Excel original para validar conservación del orden'
+    : 'Plantilla Excel original del menú';
+  const resultAttachmentName = preservesOrder
+    ? 'Plantilla Excel recargada sin cambios de orden'
+    : 'Plantilla Excel actualizada';
+  await testInfo.attach(buildExcelAttachmentName(sourceAttachmentName, edited.sourcePath), {
     path: edited.sourcePath,
     contentType: excelContentType(edited.sourcePath),
   });
-  await testInfo.attach(buildExcelAttachmentName('Plantilla Excel actualizada', edited.outputPath), {
+  await testInfo.attach(buildExcelAttachmentName(resultAttachmentName, edited.outputPath), {
     path: edited.outputPath,
     contentType: excelContentType(edited.outputPath),
   });
 
-  const expectedSnapshot = buildExpectedMenuSnapshot(baselineSnapshot, edited.changes);
+  const expectedSnapshot = buildExpectedMenuSnapshot(baselineSnapshot, edited.changes, {
+    itemName: expectation.itemName,
+  });
 
   await goToLanding(page);
   await new LoginPage(page).expectAuthenticated();
@@ -275,6 +342,7 @@ export async function updateExistingMenuWorkflow(
     sourceFile: edited.sourcePath,
     resultFile: edited.outputPath,
     changes: edited.changes,
+    itemChange,
     beforeJson,
     afterJson,
     baselineSnapshot,

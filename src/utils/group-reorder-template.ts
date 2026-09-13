@@ -41,6 +41,17 @@ export type GroupReorderResult = {
   changes: ReorderChange[];
 };
 
+export type PreserveOrderResult = GroupReorderResult & {
+  itemChange: {
+    sheet: string;
+    cell: string;
+    field: string;
+    entityId: string;
+    previousValue: string;
+    newValue: string;
+  };
+};
+
 export type ReorderChange = {
   sheet: string;
   cell: string;
@@ -52,6 +63,77 @@ export type ReorderChange = {
   previousValue: string;
   newValue: string;
 };
+
+export function renameItemPreservingOrder(
+  request: GroupReorderRequest & { itemNameSuffix: string },
+): PreserveOrderResult {
+  const { sourcePath, targetPath: inputPath } = request.sourceCopy ?? copyExcelFromPreviousCase({
+    fromCase: request.sourceCaseId,
+    toCase: request.caseId,
+    scope: request.artifactScope,
+  });
+  const selected = readGroupsAndModifiersExpectation(inputPath, request.aggregator);
+  const baseline = readGroupsAndModifiersExpectation(inputPath, request.aggregator, {
+    itemId: selected.itemId,
+    includeAllGroups: true,
+    minimumModifiersPerGroup: 1,
+    excludeAutomatedModifiers: false,
+  });
+  const workbook = xlsx.readFile(inputPath, { cellStyles: true });
+  const originalSheetNames = [...workbook.SheetNames];
+  const originalRowCounts = Object.fromEntries(
+    originalSheetNames.map(name => [name, sheetRows(workbook.Sheets[name]).length]),
+  );
+  const items = requiredTable(workbook, 'Items');
+  const itemColumn = requiredColumn(items, ['Item']);
+  const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
+  const itemRow = items.rows.findIndex((row, index) =>
+    index > 0 && canonicalId(row[itemColumn]) === baseline.itemId);
+  if (itemRow < 1) {
+    throw new Error(`No se encontro el item ${baseline.itemId} para identificar la recarga.`);
+  }
+
+  const previousName = displayValue(items.rows[itemRow][itemNameColumn]);
+  const baseName = previousName.replace(/_AUTO_CP\d+_\d{8}_\d{6}$/i, '');
+  const newName = `${baseName}_${request.itemNameSuffix}`;
+  const cell = xlsx.utils.encode_cell({ r: itemRow, c: itemNameColumn });
+  xlsx.utils.sheet_add_aoa(items.sheet, [[newName]], { origin: { r: itemRow, c: itemNameColumn } });
+  xlsx.writeFile(workbook, inputPath, { compression: true, cellStyles: true });
+  verifySavedTemplate(inputPath, originalSheetNames, originalRowCounts);
+
+  const expectation = readGroupsAndModifiersExpectation(inputPath, request.aggregator, {
+    itemId: baseline.itemId,
+    includeAllGroups: true,
+    minimumModifiersPerGroup: 1,
+    excludeAutomatedModifiers: false,
+  });
+  if (expectation.itemName !== newName) {
+    throw new Error(`No se guardo el nuevo nombre del item ${baseline.itemId}.`);
+  }
+  if (JSON.stringify(expectation.groups) !== JSON.stringify(baseline.groups)) {
+    throw new Error('La copia para recarga modifico el orden de grupos o modificadores.');
+  }
+  if (expectation.itemDescription !== baseline.itemDescription
+    || expectation.categoryName !== baseline.categoryName) {
+    throw new Error('La copia para recarga modifico datos del item distintos al nombre comercial.');
+  }
+
+  return {
+    sourcePath,
+    inputPath,
+    outputPath: inputPath,
+    expectation,
+    changes: [],
+    itemChange: {
+      sheet: items.name,
+      cell,
+      field: displayValue(items.headers[itemNameColumn]),
+      entityId: baseline.itemId,
+      previousValue: previousName,
+      newValue: newName,
+    },
+  };
+}
 
 type SheetTable = {
   name: string;
@@ -479,15 +561,39 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
 }
 
 
+export type GroupExpectationReadOptions = {
+  itemId?: string;
+  includeAllGroups?: boolean;
+  minimumModifiersPerGroup?: number;
+  excludeAutomatedModifiers?: boolean;
+};
+
 export function readGroupsAndModifiersExpectation(
   inputPath: string,
   aggregator: string,
+  options: GroupExpectationReadOptions = {},
 ): ReorderedGroupsExpectation {
   const workbook = xlsx.readFile(inputPath, { cellStyles: true });
   const items = requiredTable(workbook, 'Items');
   const categories = requiredTable(workbook, 'Categorias');
   const groups = requiredTable(workbook, 'GrupoModificador');
   const modifiers = requiredTable(workbook, 'Modificadores');
+  const subgroups = options.includeAllGroups
+    ? requiredTable(workbook, 'Subgrupos')
+    : undefined;
+
+  const subgroupNameByCode = new Map<string, string>();
+  if (subgroups) {
+    const subgroupCodeColumn = requiredColumn(subgroups, ['Subgrupo']);
+    const subgroupNameColumn = requiredColumn(subgroups, ['Nombre Comercial']);
+    for (const row of subgroups.rows.slice(1)) {
+      const code = canonicalId(row[subgroupCodeColumn]);
+      const name = displayValue(row[subgroupNameColumn]);
+      if (code && name && !subgroupNameByCode.has(code)) {
+        subgroupNameByCode.set(code, name);
+      }
+    }
+  }
 
   const itemColumn = requiredColumn(items, ['Item']);
   const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
@@ -504,14 +610,24 @@ export function readGroupsAndModifiersExpectation(
     groupNameColumn: requiredColumn(groups, ['Nombre Comercial']),
     groupOrderColumn: requiredColumn(groups, ['Orden', 'Posicion']),
     groupAggregatorColumn: requiredColumn(groups, [aggregator]),
+    groupSubgroupsColumn: options.includeAllGroups
+      ? requiredColumn(groups, ['Subgrupos'])
+      : undefined,
     modifierItemColumn: requiredColumn(modifiers, ['Item']),
     modifierGroupColumn: requiredColumn(modifiers, ['Grupo Modificador']),
     modifierIdColumn: requiredColumn(modifiers, ['Modificador']),
     modifierNameColumn: requiredColumn(modifiers, ['Nombre Comercial Modificador']),
     modifierOrderColumn: requiredColumn(modifiers, ['Orden', 'Posicion']),
     modifierAggregatorColumn: requiredColumn(modifiers, [aggregator]),
+    modifierSubgroupsColumn: options.includeAllGroups
+      ? requiredColumn(modifiers, ['Subgrupos'])
+      : undefined,
+    subgroupNameByCode,
     aggregator,
-    minimumModifiersPerGroup: 2,
+    minimumModifiersPerGroup: options.minimumModifiersPerGroup ?? 2,
+    preferredItemId: options.itemId,
+    includeAllGroups: options.includeAllGroups,
+    excludeAutomatedModifiers: options.excludeAutomatedModifiers ?? true,
   });
 
   return {
@@ -526,7 +642,9 @@ export function readGroupsAndModifiersExpectation(
         name: group.name,
         previousOrder: group.order,
         expectedOrder: group.order,
-        modifiers: [...group.modifiers].sort((left, right) => left.order - right.order),
+        modifiers: [...group.modifiers]
+          .sort((left, right) => left.order - right.order)
+          .map(({ id, name, order }) => ({ id, name, order })),
       }))
       .sort((left, right) => left.expectedOrder - right.expectedOrder),
   };
@@ -544,14 +662,20 @@ function selectItemWithThreeGroups(input: {
   groupNameColumn: number;
   groupOrderColumn: number;
   groupAggregatorColumn: number;
+  groupSubgroupsColumn?: number;
   modifierItemColumn: number;
   modifierGroupColumn: number;
   modifierIdColumn: number;
   modifierNameColumn: number;
   modifierOrderColumn: number;
   modifierAggregatorColumn: number;
+  modifierSubgroupsColumn?: number;
+  subgroupNameByCode?: ReadonlyMap<string, string>;
   aggregator: string;
   minimumModifiersPerGroup?: number;
+  preferredItemId?: string;
+  includeAllGroups?: boolean;
+  excludeAutomatedModifiers?: boolean;
 }): GroupSelection {
   const itemRows = new Map(
     input.items.rows.slice(1)
@@ -567,18 +691,31 @@ function selectItemWithThreeGroups(input: {
     }
   }
 
-  const groupById = new Map<string, { row: number; id: string; name: string; order: number }>();
+  const groupById = new Map<string, {
+    row: number;
+    id: string;
+    name: string;
+    order: number;
+    subgroupCodes: string[];
+  }>();
   for (let row = 1; row < input.groups.rows.length; row += 1) {
     if (!isEnabled(input.groups.rows[row][input.groupAggregatorColumn])) continue;
     const id = canonicalId(input.groups.rows[row][input.groupIdColumn]);
     const name = displayValue(input.groups.rows[row][input.groupNameColumn]);
     const order = Number(input.groups.rows[row][input.groupOrderColumn]);
     if (id && name && Number.isFinite(order)) {
-      groupById.set(id, { row, id, name, order });
+      const subgroupCodes = input.groupSubgroupsColumn === undefined
+        ? []
+        : splitSubgroupCodes(input.groups.rows[row][input.groupSubgroupsColumn]);
+      groupById.set(id, { row, id, name, order, subgroupCodes });
     }
   }
 
-  const modifiersByItemGroup = new Map<string, Array<CoreViewerModifierExpectation & { groupDisplayName: string }>>();
+  type ParsedModifier = CoreViewerModifierExpectation & {
+    groupDisplayName: string;
+    subgroupCodes: string[];
+  };
+  const modifiersByItemGroup = new Map<string, ParsedModifier[]>();
   for (const row of input.modifiers.rows.slice(1)) {
     if (!isEnabled(row[input.modifierAggregatorColumn])) continue;
     const itemId = canonicalId(row[input.modifierItemColumn]);
@@ -588,6 +725,9 @@ function selectItemWithThreeGroups(input: {
       name: displayValue(row[input.modifierNameColumn]),
       order: Number(row[input.modifierOrderColumn]),
       groupDisplayName: displayValue(row[input.modifierGroupColumn + 1]),
+      subgroupCodes: input.modifierSubgroupsColumn === undefined
+        ? []
+        : splitSubgroupCodes(row[input.modifierSubgroupsColumn]),
     };
     if (!itemId || !groupId || !modifier.id || !modifier.name || !Number.isFinite(modifier.order)) continue;
     const key = `${itemId}::${groupId}`;
@@ -595,6 +735,7 @@ function selectItemWithThreeGroups(input: {
   }
 
   for (const [itemId, itemRow] of itemRows) {
+    if (input.preferredItemId && itemId !== input.preferredItemId) continue;
     const categoryName = categoryByItem.get(itemId);
     if (!categoryName) continue;
 
@@ -611,19 +752,38 @@ function selectItemWithThreeGroups(input: {
       })
       .filter(group =>
         group.modifiers.length >= minimumModifiersPerGroup
-        && hasUniqueModifierOrders(group.modifiers)
-        && !group.modifiers.some(modifier => modifier.name.startsWith('AUTO_')))
+        && (input.includeAllGroups || hasUniqueModifierOrders(group.modifiers))
+        && (input.excludeAutomatedModifiers === false
+          || !group.modifiers.some(modifier => modifier.name.startsWith('AUTO_'))))
       .sort((left, right) => left.order - right.order);
 
-    const visuallyStableGroups = relatedGroups.filter(group => !/^Adicionales$/i.test(group.name));
-    const selectedGroups = visuallyStableGroups.length >= 3 ? visuallyStableGroups : relatedGroups;
+    const visualGroups = input.includeAllGroups
+      ? relatedGroups.flatMap(group => {
+        if (group.subgroupCodes.length === 0) return [group];
+
+        return group.subgroupCodes
+          .map(subgroupCode => ({
+            ...group,
+            id: `${group.id}_${subgroupCode}`,
+            name: input.subgroupNameByCode?.get(subgroupCode) ?? group.name,
+            modifiers: group.modifiers.filter(modifier =>
+              modifier.subgroupCodes.includes(subgroupCode)),
+          }))
+          .filter(group => group.modifiers.length >= minimumModifiersPerGroup);
+      })
+      : relatedGroups;
+
+    const visuallyStableGroups = visualGroups.filter(group => !/^Adicionales$/i.test(group.name));
+    const selectedGroups = input.includeAllGroups
+      ? visualGroups
+      : visuallyStableGroups.length >= 3 ? visuallyStableGroups : visualGroups;
 
     if (selectedGroups.length >= 3) {
       return {
         itemId,
         itemRow,
         categoryName,
-        groupRows: selectedGroups.slice(0, 3),
+        groupRows: input.includeAllGroups ? selectedGroups : selectedGroups.slice(0, 3),
       };
     }
   }
@@ -709,6 +869,13 @@ function verifySavedTemplate(
       );
     }
   }
+}
+
+function splitSubgroupCodes(value: unknown): string[] {
+  return displayValue(value)
+    .split(/[,;|]/)
+    .map(canonicalId)
+    .filter(Boolean);
 }
 
 function isEnabled(value: unknown): boolean {

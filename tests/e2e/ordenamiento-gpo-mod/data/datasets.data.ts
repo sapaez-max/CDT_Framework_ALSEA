@@ -1,67 +1,173 @@
-import { brandCatalog } from './catalog.data';
-import { scenarioIds, type ScenarioId, type TestDataset } from './types';
+export const scenarioIds = [
+  'downloadTemplate',
+  'editTemplate',
+  'uploadFilters',
+  'uploadMenu',
+  'validateVisor',
+  'validateJson',
+  'reorderGroups',
+  'reorderModifiers',
+  'reorderGroupsAndModifiers',
+  'updateExistingMenu',
+  'preserveOrder',
+  'multipleGroups',
+] as const;
 
-export const testDatasets: TestDataset[] = [
+export type ScenarioId = typeof scenarioIds[number];
+export type CaseId = `CP${number}`;
+export type BrandTag = `@${string}`;
+
+export type BrandProfile = {
+  label: string;
+  displayName: string;
+  tag: BrandTag;
+  sourceSheet: string;
+};
+
+export const brandProfiles = {
+  starbucks: {
+    label: 'STARBUCKS',
+    displayName: 'Starbucks',
+    tag: '@starbucks',
+    sourceSheet: 'SBX',
+  },
+  'burger-king': {
+    label: 'BURGER KING',
+    displayName: 'Burger King',
+    tag: '@burger-king',
+    sourceSheet: 'BK',
+  },
+  vips: {
+    label: 'VIPS',
+    displayName: 'VIPS',
+    tag: '@vips',
+    sourceSheet: 'VIPS',
+  },
+  chilis: {
+    label: 'CHILIS',
+    displayName: "Chili's",
+    tag: '@chilis',
+    sourceSheet: 'Chilis',
+  },
+} as const satisfies Record<string, BrandProfile>;
+
+export type BrandId = keyof typeof brandProfiles;
+
+export type DatasetOverrides = {
+  downloadTemplate?: {
+    date?: string;
+    exactSelections?: boolean;
+  };
+  uploadFilters?: {
+    validateEmail?: boolean;
+  };
+};
+
+export type TestDataset = {
+  id: string;
+  enabled: boolean;
+  country: string;
+  brandId: BrandId;
+  branch: {
+    code: string;
+    name: string;
+    label: string;
+  };
+  aggregator: string;
+  menuType: string;
+  traceability: {
+    cpBase: number;
+    cpOverrides?: Partial<Record<ScenarioId, CaseId>>;
+  };
+  enabledScenarios: readonly ScenarioId[];
+  overrides?: DatasetOverrides;
+};
+
+const implementedScenarios = [
+  'downloadTemplate',
+  'editTemplate',
+  'uploadFilters',
+  'uploadMenu',
+  'validateVisor',
+  'validateJson',
+  'reorderGroups',
+  'reorderModifiers',
+  'reorderGroupsAndModifiers',
+  'updateExistingMenu',
+  'preserveOrder',
+] as const satisfies readonly ScenarioId[];
+
+export const testDatasets = [
   {
     id: 'starbucks-wtc-rappi',
     enabled: true,
-    primary: true,
-    brandId: 'starbucks',
     country: 'MEXICO',
-    branchCode: '38109',
+    brandId: 'starbucks',
+    branch: {
+      code: '38109',
+      name: 'STARBUCKS WTC',
+      label: 'STARBUCKS WTC - 38109',
+    },
     aggregator: 'RAPPI',
     menuType: 'Delivery BIS',
-    scenarios: currentScenarioApplicability(),
+    traceability: { cpBase: 1 },
+    enabledScenarios: implementedScenarios,
+    overrides: {
+      uploadFilters: { validateEmail: true },
+    },
   },
   {
     id: 'burgerking-aguilas-uber',
     enabled: true,
-    primary: true,
-    brandId: 'burger-king',
     country: 'MEXICO',
-    branchCode: '12513',
+    brandId: 'burger-king',
+    branch: {
+      code: '12513',
+      name: 'Burger King - Aguilas',
+      label: 'Burger King - Aguilas - 12513',
+    },
     aggregator: 'UBER EATS',
     menuType: 'Delivery',
-    scenarios: currentScenarioApplicability(),
+    traceability: { cpBase: 13 },
+    enabledScenarios: implementedScenarios,
+    overrides: {
+      downloadTemplate: {
+        date: '03/08/2026',
+        exactSelections: true,
+      },
+    },
   },
   {
     id: 'vips-las-torres-uber',
     enabled: true,
-    primary: true,
-    brandId: 'vips',
     country: 'MEXICO',
-    branchCode: '81099',
+    brandId: 'vips',
+    branch: {
+      code: '81099',
+      name: 'Vips - Las torres',
+      label: 'Vips - Las torres 81099',
+    },
     aggregator: 'UBER EATS',
     menuType: 'Delivery',
-    scenarios: currentScenarioApplicability(),
+    traceability: { cpBase: 25 },
+    enabledScenarios: implementedScenarios,
   },
   {
     id: 'chilis-aeropuerto-t1-uber',
     enabled: true,
-    primary: true,
-    brandId: 'chilis',
     country: 'MEXICO',
-    branchCode: '1075',
+    brandId: 'chilis',
+    branch: {
+      code: '1075',
+      name: 'CHILIS AEROPUERTO T1',
+      label: 'CHILIS AEROPUERTO T1 - 1075',
+    },
     aggregator: 'UBER EATS',
     menuType: 'Delivery Codisys',
-    scenarios: currentScenarioApplicability(),
+    traceability: { cpBase: 37 },
+    enabledScenarios: implementedScenarios,
   },
-];
-
-function currentScenarioApplicability() {
-  return {
-    downloadTemplate: true,
-    editTemplate: true,
-    uploadFilters: true,
-    uploadMenu: true,
-    validateVisor: true,
-    validateJson: true,
-    reorderGroups: true,
-    reorderModifiers: true,
-    reorderGroupsAndModifiers: true,
-    updateExistingMenu: true,
-  } as const;
-}
+] as const satisfies readonly TestDataset[];
 
 validateDatasets(testDatasets);
 
@@ -71,32 +177,160 @@ export function getDataset(datasetId: string): TestDataset {
   return dataset;
 }
 
-export function isScenarioEnabled(dataset: TestDataset, scenario: ScenarioId): boolean {
-  return dataset.enabled && (dataset.runAllScenarios === true || dataset.scenarios?.[scenario] === true);
+export function getBrand(brandId: BrandId): BrandProfile {
+  const brand = brandProfiles[brandId];
+  if (!brand) throw new Error(`No existe la marca ${brandId}.`);
+  return brand;
 }
 
-function validateDatasets(datasets: TestDataset[]): void {
+export function isScenarioEnabled(dataset: TestDataset, scenario: ScenarioId): boolean {
+  return dataset.enabled && dataset.enabledScenarios.includes(scenario);
+}
+
+export function resolveCaseId(dataset: TestDataset, scenario: ScenarioId): CaseId {
+  const override = dataset.traceability.cpOverrides?.[scenario];
+  if (override) return override;
+  const scenarioNumber = scenarioIds.indexOf(scenario) + 1;
+  if (scenarioNumber <= 0) throw new Error(`No existe el escenario ${scenario}.`);
+  return `CP${dataset.traceability.cpBase + scenarioNumber - 1}`;
+}
+
+export function validateDatasets(datasets: readonly TestDataset[]): void {
   const ids = new Set<string>();
+  const combinations = new Set<string>();
+  const assignedCases = new Map<CaseId, string>();
+
+  for (const [brandId, brand] of Object.entries(brandProfiles)) {
+    requireText(brand.label, `${brandId}: label de marca`);
+    requireText(brand.displayName, `${brandId}: displayName de marca`);
+    requireText(brand.sourceSheet, `${brandId}: sourceSheet de marca`);
+    if (!/^@[a-z0-9-]+$/.test(brand.tag)) {
+      throw new Error(`${brandId}: el tag ${brand.tag} no tiene un formato valido.`);
+    }
+  }
 
   for (const dataset of datasets) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(dataset.id)) {
+      throw new Error(`${dataset.id}: utiliza un id en kebab-case.`);
+    }
     if (ids.has(dataset.id)) throw new Error(`El juego de datos ${dataset.id} esta duplicado.`);
     ids.add(dataset.id);
 
-    const brand = brandCatalog[dataset.brandId];
-    if (dataset.country !== brand.country) {
-      throw new Error(`${dataset.id}: el pais ${dataset.country} no corresponde a ${brand.name}.`);
+    if (!brandProfiles[dataset.brandId]) {
+      throw new Error(`${dataset.id}: la marca ${dataset.brandId} no esta registrada.`);
     }
-    if (!brand.branches.some(branch => branch.code === dataset.branchCode)) {
-      throw new Error(`${dataset.id}: la sucursal ${dataset.branchCode} no esta registrada para ${brand.name}.`);
+    requireText(dataset.country, `${dataset.id}: country`);
+    requireText(dataset.branch.code, `${dataset.id}: branch.code`);
+    requireText(dataset.branch.name, `${dataset.id}: branch.name`);
+    requireText(dataset.branch.label, `${dataset.id}: branch.label`);
+    requireText(dataset.aggregator, `${dataset.id}: aggregator`);
+    requireText(dataset.menuType, `${dataset.id}: menuType`);
+
+    if (!dataset.branch.label.includes(dataset.branch.code)) {
+      throw new Error(`${dataset.id}: branch.label debe contener el codigo ${dataset.branch.code}.`);
     }
-    if (!brand.aggregators.includes(dataset.aggregator)) {
-      throw new Error(`${dataset.id}: el agregador ${dataset.aggregator} no esta registrado para ${brand.name}.`);
+    if (!Number.isInteger(dataset.traceability.cpBase) || dataset.traceability.cpBase <= 0) {
+      throw new Error(`${dataset.id}: cpBase debe ser un entero positivo.`);
     }
-    if (!brand.menuTypes.includes(dataset.menuType)) {
-      throw new Error(`${dataset.id}: el tipo de menu ${dataset.menuType} no esta registrado para ${brand.name}.`);
+    if (dataset.enabledScenarios.length === 0) {
+      throw new Error(`${dataset.id}: habilita al menos un escenario.`);
     }
-    if (!dataset.runAllScenarios && !scenarioIds.some(scenario => dataset.scenarios?.[scenario])) {
-      throw new Error(`${dataset.id}: habilita al menos un escenario o usa runAllScenarios.`);
+
+    const uniqueScenarios = new Set<ScenarioId>();
+    for (const scenario of dataset.enabledScenarios) {
+      if (!scenarioIds.includes(scenario)) {
+        throw new Error(`${dataset.id}: el escenario ${scenario} no existe.`);
+      }
+      if (uniqueScenarios.has(scenario)) {
+        throw new Error(`${dataset.id}: el escenario ${scenario} esta duplicado.`);
+      }
+      uniqueScenarios.add(scenario);
+    }
+
+    const combination = [
+      dataset.country,
+      dataset.brandId,
+      dataset.branch.code,
+      dataset.aggregator,
+      dataset.menuType,
+    ].join('|').toLocaleLowerCase();
+    if (combinations.has(combination)) {
+      throw new Error(`${dataset.id}: la combinacion funcional esta duplicada.`);
+    }
+    combinations.add(combination);
+
+    for (const scenario of scenarioIds) {
+      const cp = resolveCaseId(dataset, scenario);
+      if (!/^CP[1-9]\d*$/.test(cp)) {
+        throw new Error(`${dataset.id}/${scenario}: el CP ${cp} no es valido.`);
+      }
+      const owner = assignedCases.get(cp);
+      if (owner) throw new Error(`${dataset.id}/${scenario}: ${cp} ya pertenece a ${owner}.`);
+      assignedCases.set(cp, `${dataset.id}/${scenario}`);
+    }
+
+    validateObjectKeys(
+      dataset.traceability.cpOverrides,
+      scenarioIds,
+      `${dataset.id}: traceability.cpOverrides`,
+    );
+    validateObjectKeys(
+      dataset.overrides,
+      ['downloadTemplate', 'uploadFilters'],
+      `${dataset.id}: overrides`,
+    );
+    validateObjectKeys(
+      dataset.overrides?.downloadTemplate,
+      ['date', 'exactSelections'],
+      `${dataset.id}: overrides.downloadTemplate`,
+    );
+    validateObjectKeys(
+      dataset.overrides?.uploadFilters,
+      ['validateEmail'],
+      `${dataset.id}: overrides.uploadFilters`,
+    );
+
+    if (dataset.overrides?.downloadTemplate?.exactSelections !== undefined
+      && typeof dataset.overrides.downloadTemplate.exactSelections !== 'boolean') {
+      throw new Error(`${dataset.id}: exactSelections debe ser booleano.`);
+    }
+    if (dataset.overrides?.uploadFilters?.validateEmail !== undefined
+      && typeof dataset.overrides.uploadFilters.validateEmail !== 'boolean') {
+      throw new Error(`${dataset.id}: validateEmail debe ser booleano.`);
+    }
+
+    const date = dataset.overrides?.downloadTemplate?.date;
+    if (date && !isValidDate(date)) {
+      throw new Error(`${dataset.id}: la fecha ${date} debe ser valida y usar DD/MM/YYYY.`);
     }
   }
+}
+
+function validateObjectKeys(
+  value: object | undefined,
+  allowedKeys: readonly string[],
+  field: string,
+): void {
+  if (!value) return;
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.includes(key)) {
+      throw new Error(`${field}: la clave ${key} no esta permitida.`);
+    }
+  }
+}
+function requireText(value: string, field: string): void {
+  if (!value.trim()) throw new Error(`Falta ${field}.`);
+}
+
+function isValidDate(value: string): boolean {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) return false;
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const parsed = new Date(year, month - 1, day);
+  return parsed.getFullYear() === year
+    && parsed.getMonth() === month - 1
+    && parsed.getDate() === day;
 }

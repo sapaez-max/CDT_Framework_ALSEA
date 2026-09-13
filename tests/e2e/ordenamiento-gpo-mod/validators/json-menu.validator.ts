@@ -1,7 +1,7 @@
 import { expect, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { CoreViewerPage } from '@pages/menu/CoreViewerPage';
 import type { CoreViewerTemplateExpectation } from '@utils/core-viewer-template';
-import type { JsonValidationCase } from '../data/types';
+import type { JsonValidationCase } from '../data/cases.data';
 
 export async function validatePublishedMenuJson(
   page: Page,

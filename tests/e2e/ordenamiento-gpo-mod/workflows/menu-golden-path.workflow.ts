@@ -6,7 +6,7 @@ import type {
   MenuLoadCase,
   TemplateDownloadCase,
   TemplateEditCase,
-} from '../data/types';
+} from '../data/cases.data';
 import { downloadTemplateWorkflow } from './download-template.workflow';
 import { editTemplateWorkflow } from './edit-template.workflow';
 import { uploadFiltersWorkflow } from './upload-filters.workflow';

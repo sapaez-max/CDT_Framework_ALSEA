@@ -448,7 +448,7 @@ D. No se generan duplicados de grupos ni modificadores.
 ---
 
 ### Caso de prueba: CP11
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 12
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -963,7 +963,7 @@ D. No se generan duplicados de grupos ni modificadores.
 ---
 
 ### Caso de prueba: CP23
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 12
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1468,7 +1468,7 @@ D. No se generan duplicados de grupos ni modificadores.
 ---
 
 ### Caso de prueba: CP35
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 12
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1988,7 +1988,7 @@ D. No se generan duplicados de grupos ni modificadores.
 ---
 
 ### Caso de prueba: CP47
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 12
 - REQ: OrdenamientoGpoMod&Mod 2.0

@@ -81,6 +81,14 @@ const flows: Readonly<Record<string, FlowStepDefinition[]>> = {
     'Reordenar grupos y modificadores en una copia del Excel',
     'Validar en Visor CORE el nuevo orden de grupos y modificadores',
   ),
+  '11-preserve-order.spec.ts': [
+    step('Seleccionar la plantilla del menú publicado', /Identificar la plantilla del menu existente/i),
+    step('Consultar el producto y guardar su orden inicial en Visor CORE', /Capturar y validar el estado inicial/i),
+    step('Cambiar el nombre del producto sin modificar el orden del Excel', /conservar el orden y cambiar el nombre/i),
+    step('Actualizar los filtros del menú existente', /Actualizar filtros del menu existente/i),
+    step('Publicar nuevamente el menú', /Publicar la actualizacion del menu existente/i),
+    step('Confirmar el nuevo nombre y que el orden se conserva', /Esperar y validar la propagacion/i),
+  ],
   '10-update-existing-menu.spec.ts': [
     step('Seleccionar la plantilla del menú ya publicado', /Identificar la plantilla del menu existente/i),
     step('Acceder al portal con la sesión autorizada', /Validar sesion autenticada/i),

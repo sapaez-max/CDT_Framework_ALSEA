@@ -11,6 +11,7 @@ import {
   chainedReorderModifiersTestPattern,
   chainedReorderGroupsAndModifiersTestPattern,
   chainedUpdateExistingMenuTestPattern,
+  chainedPreserveOrderTestPattern,
   getRoleProjectConfigs,
 } from './src/config/roles';
 
@@ -125,6 +126,15 @@ export default defineConfig({
     {
       name: 'ordenamiento-actualizar-menu',
       testMatch: chainedUpdateExistingMenuTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-conservar-orden',
+      testMatch: chainedPreserveOrderTestPattern,
       use: {
         ...devices['Desktop Chrome'],
         storageState: env.authEnabled ? env.authStatePath : undefined,

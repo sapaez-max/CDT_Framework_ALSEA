@@ -2,7 +2,7 @@ import { fileTest as test, type TestInfo } from '@fixtures/base.fixture';
 import { excelContentType } from '@src/reporting/email-evidence';
 import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
-import type { TemplateEditCase } from '../data/types';
+import type { TemplateEditCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import {
   annotateExecutionContext,

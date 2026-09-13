@@ -2,7 +2,7 @@ import type { Page, TestInfo } from '@fixtures/base.fixture';
 import { CoreViewerPage } from '@pages/menu/CoreViewerPage';
 import type { CoreViewerTemplateExpectation } from '@utils/core-viewer-template';
 import { buildCoreViewerComparisonHtml } from '@src/reporting/core-viewer-comparison';
-import type { CoreViewerCase } from '../data/types';
+import type { CoreViewerCase } from '../data/cases.data';
 
 export async function validateCoreViewer(
   page: Page,

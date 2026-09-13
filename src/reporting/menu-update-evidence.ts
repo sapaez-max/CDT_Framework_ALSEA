@@ -22,6 +22,11 @@ export type MenuUpdateEvidenceInput = {
   sourceFile: string;
   resultFile: string;
   changes: ReorderChange[];
+  itemChange?: {
+    entityId: string;
+    previousValue: string;
+    newValue: string;
+  };
   beforeJson: string;
   afterJson: string;
   baselineSnapshot: MenuSnapshot;
@@ -75,6 +80,7 @@ export function buildMenuUpdateEvidenceHtml(input: MenuUpdateEvidenceInput): str
     <tr><th>Item</th><td>${escapeHtml(`${input.item.id} - ${input.item.name}`)}</td></tr>
   </tbody></table>
 
+  ${input.itemChange ? itemChangeTable(input.itemChange) : ''}
   ${changesTable('Grupos modificadores actualizados', groupRows)}
   ${changesTable('Modificadores actualizados', modifierRows)}
 
@@ -118,6 +124,12 @@ export function buildTechnicalMenuJsonComparison(input: MenuUpdateEvidenceInput)
         unchangedModifiers: input.semanticComparison.controlModifiers,
       },
     },
+    itemChange: input.itemChange ? {
+      id: input.itemChange.entityId,
+      field: 'Nombre Comercial',
+      before: input.itemChange.previousValue,
+      after: input.itemChange.newValue,
+    } : undefined,
     expectedChanges: input.changes.map(change => ({
       entity: change.entityType,
       id: change.entityId,
@@ -137,6 +149,17 @@ export function buildTechnicalMenuJsonComparison(input: MenuUpdateEvidenceInput)
       after: parseJson(input.afterJson),
     },
   }, null, 2);
+}
+
+function itemChangeTable(change: NonNullable<MenuUpdateEvidenceInput['itemChange']>): string {
+  return `<h2>Item actualizado para identificar la publicación</h2>
+  <table><thead><tr><th>Item ID</th><th>Nombre anterior</th><th>Nombre nuevo</th><th>Estado</th></tr></thead>
+  <tbody><tr>
+    <td>${escapeHtml(change.entityId)}</td>
+    <td>${escapeHtml(change.previousValue)}</td>
+    <td>${escapeHtml(change.newValue)}</td>
+    <td class="pass">MODIFICADO</td>
+  </tr></tbody></table>`;
 }
 
 function changesTable(title: string, changes: ReorderChange[]): string {

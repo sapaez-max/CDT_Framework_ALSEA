@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
 import type { GmailClient } from '@src/integrations/google/gmail-client';
-import type { TemplateDownloadCase } from '../data/types';
+import type { TemplateDownloadCase } from '../data/cases.data';
 import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';
 import {

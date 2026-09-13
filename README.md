@@ -1,290 +1,111 @@
 # Framework Playwright - Alsea Delivery
 
-## Preparacion
+Framework de automatización E2E para validar los flujos de ordenamiento de grupos modificadores y modificadores de Alsea Delivery.
 
-1. Ejecutar `npm ci` y `npx playwright install chromium` con Node 20 o superior.
-2. Copiar `.env.example` a `.env`.
-3. Configurar `APP_ACCOUNT_DISPLAY_NAME` con el correo que debe aparecer en landing.
-4. Ejecutar `npm run typecheck` y `npm run test:list`.
+## Estado actual
 
-La URL, las rutas y los selectores se configuran por variables de entorno. El rol
-actual es Admin, el unico informado por el cliente. Las credenciales no se guardan
-en `.env`, en el codigo ni en la documentacion del proyecto.
+Los 48 casos documentales se representan mediante 12 escenarios funcionales reutilizables y juegos de datos por marca. Están implementados los escenarios 1 al 11, que cubren CP1-CP11, CP13-CP23, CP25-CP35 y CP37-CP47. Permanece pendiente la validación de múltiples grupos modificadores.
 
-## Generacion manual de la sesion
+## Stack
 
-El portal DEV rechaza el login cuando detecta un navegador controlado por
-Playwright. El comando inicia una instancia independiente de Google Chrome con un
-perfil temporal y Playwright se conecta solamente despues del acceso manual:
+- Node.js 20 o superior
+- TypeScript
+- Playwright
+- SheetJS (`xlsx`)
+- Google Gmail API con OAuth 2.0
 
-1. Ejecutar `npm run auth:manual`.
-2. En la ventana independiente de Chrome, escribir manualmente usuario y contrasena.
-3. Pulsar `Iniciar sesion` y completar cualquier validacion presentada por el portal.
-4. Esperar a que el navegador llegue a `/landing/` y muestre la cuenta esperada.
-5. Volver a la terminal y presionar Enter.
-6. El comando se conecta a Chrome, guarda la sesion en `.auth/admin.json`, cierra
-   esa instancia y elimina su perfil temporal.
-7. Ejecutar `npm run test:session` para comprobar la reutilizacion.
+## Preparación
 
-El comando espera cinco minutos de forma predeterminada. El valor se controla con
-`MANUAL_AUTH_TIMEOUT_MS`. Si la sesion expira, se ejecuta nuevamente
-`npm run auth:manual`.
+```powershell
+npm ci
+npx playwright install chromium
+Copy-Item .env.example .env
+npm run typecheck
+npm run data:validate
+npm run test:list
+```
 
-La conexion local usa el puerto configurado en `AUTH_CDP_PORT` y el perfil indicado
-por `AUTH_CAPTURE_PROFILE_PATH`, que debe permanecer dentro de `.auth`. Si Chrome
-no se encuentra en una ruta habitual, se configura su ejecutable mediante
-`BROWSER_EXECUTABLE_PATH`.
+Configura en `.env` las variables del ambiente, la cuenta esperada y las rutas locales de autenticación. No guardes credenciales, tokens ni sesiones en el repositorio.
 
-Antes de ejecutar la suite, `globalSetup` valida la estructura y la expiracion de
-los tokens Cognito guardados sin reportarlo como un caso de prueba adicional. Una
-sesion vencida o con menos de un minuto de vigencia restante falla con un mensaje
-que solicita ejecutar `npm run auth:manual`. El margen se configura mediante
-`AUTH_MINIMUM_VALIDITY_MS`.
+## Autenticación
 
-`.auth/admin.json` contiene cookies y almacenamiento autenticado. Esta protegido
-por `.gitignore` y no debe copiarse, compartirse ni versionarse.
+El ambiente DEV requiere capturar manualmente una sesión desde una instancia independiente de Chrome:
 
-## Ejecucion y reportes
+```powershell
+npm run auth:manual
+```
 
-Los casos CP1, CP13, CP25 y CP37 validan que Gmail reciba un correo nuevo de
-`no-reply@grupoalsea.com.mx` con asunto `Descarga de la plantilla Desarrollo`.
-El cuerpo debe contener el pais, la marca, la sucursal y el tipo de menu
-seleccionados. El primer adjunto `.xls` o `.xlsx` se guarda por corrida, CP y juego
-de datos en `artifacts/runs/<runId>/<CP>/<datasetId>/`; si hay varios adjuntos Excel, el framework exige una
-coincidencia unica por nombre antes de descargar. La espera maxima se configura
-mediante `GMAIL_POLL_TIMEOUT_MS` y es de cinco minutos por defecto.
+Después del acceso manual, vuelve a la terminal, presiona Enter y valida la sesión guardada:
 
-Antes de solicitar la plantilla se captura una linea base de correos coincidentes.
-El polling solo acepta mensajes nuevos que no existian en esa linea base y valida
-remitente, asunto, cuerpo y adjunto. Antes de guardar una descarga se eliminan solo
-los Excel previos del mismo CP y juego de datos, por lo que cada combinacion conserva
-un unico resultado vigente. El reporte incluye evidencia HTML legible, los datos de
-la combinacion ejecutada y el Excel recibido. Nunca se adjuntan
-`credentials.json`, `token.json` ni tokens OAuth.
+```powershell
+npm run test:session
+```
 
-Los bloques iniciales implementados siguen una cadena de cinco casos por marca:
-descarga, edicion, carga de filtros, carga de menu y validacion en Visor CORE. CP2, CP14, CP26 y CP38 toman
-respectivamente las plantillas de CP1, CP13, CP25 y CP37, limpian solo su carpeta,
-copian el Excel anterior al espacio de su corrida y juego de datos y editan esa copia. La
-edicion agrega un timestamp local de ejecucion en formato `_YYYYMMDD_HHmmss` al final del nombre
-comercial del item seleccionado, cambia el nombre comercial y la descripcion de un
-grupo modificador, y el nombre comercial de sus dos primeros modificadores relacionados;
-los demas valores, ordenes, posiciones y columnas de agregadores permanecen intactos. Los
-identificadores dinamicos usan `formatExecutionTimestamp` desde
-`src/utils/execution-timestamp.ts`, se generan una sola vez por ejecucion y los
-escenarios posteriores los recuperan desde el Excel o artefacto generado. CP3,
-CP15, CP27 y CP39 copian el resultado de la edicion a su propia carpeta antes de
-cargar filtros. CP4, CP16, CP28 y CP40 copian el resultado del caso de filtros
-como referencia trazable del bloque antes de cargar menu. Si un caso requiere un
-Excel anterior y no existe exactamente uno, el framework falla con un mensaje
-descriptivo en lugar de elegir un archivo arbitrariamente.
+La sesión se almacena en `.auth/admin.json`, está excluida por Git y no debe compartirse. Consulta [Autenticación](docs/authentication.md) para conocer expiración, configuración de Chrome y diagnóstico.
 
-En la carga de menu, las cuatro marcas aceptan como resultado inicial el mensaje
-de exito del portal o el mensaje exacto `Endpoint request timed out`. Este timeout
-se registra en el reporte y no aprueba el caso por si solo: CP4, CP16, CP28 y CP40
-siempre deben recibir y validar un correo nuevo de carga exitosa. Cualquier otra
-notificacion de error o la ausencia del correo dentro del tiempo configurado hace
-fallar el caso.
+## Ejecución
 
-Playwright separa los casos en proyectos por etapa, desde `ordenamiento-descarga` hasta
-`ordenamiento-actualizar-menu`. Cada CP puede ejecutarse de forma individual; la
-relacion entre casos es solo de artefacto. En su primera ejecucion, CP10/CP22/CP34/CP46
-requieren el Excel del escenario 9. Las ejecuciones siguientes reutilizan el ultimo
-Excel del propio caso, invierten nuevamente las posiciones y mantienen una copia del
-estado de origen en el subdirectorio source. Los demas CP dependientes requieren
-exactamente un Excel del caso anterior; si falta, el helper falla con un mensaje
-descriptivo en lugar de ejecutar automaticamente el CP previo. La
-validacion de horarios de Vigencia queda fuera de estos casos hasta confirmar la
-regla con el cliente.
+```powershell
+npm test
+npm run test:headed
+npm run report
+```
 
-Las rutas de `credentials.json` y `token.json` se configuran en `.env` mediante
-`GOOGLE_CREDENTIALS_PATH` y `GOOGLE_TOKEN_PATH`. Estos archivos contienen secretos
-y no deben copiarse al repositorio ni incluirse en reportes.
+`npm test` ejecuta la suite configurada y registra el historial básico de la corrida. `npm run test:smoke` valida actualmente la sesión autenticada; todavía no existe una selección funcional de regresión mediante `@regression`.
 
-- `npm test`: ejecuta la suite con historial basico de corrida.
-- `npm run auth:manual`: abre Chrome independiente y captura la sesion despues del acceso manual.
-- `npm run test:session`: valida que la sesion guardada abre landing sin otro login.
-- `npm run test:smoke`: ejecuta las pruebas etiquetadas como smoke.
-- `npm run test:headed`: ejecuta la suite con navegador visible.
-- `npm run report`: abre el reporte HTML.
+Ejemplos de ejecución dirigida:
 
-Los casos tambien se pueden filtrar por marca:
+```powershell
+npx playwright test --grep "@burger-king"
+node node_modules/playwright/cli.js test --grep '@CP13\b' --workers=1
+node node_modules/playwright/cli.js test --project=ordenamiento-carga-menu --grep '@CP16\b' --workers=1
+node node_modules/playwright/cli.js test --grep '(?=.*@descarga-plantilla)(?=.*@burger-king)'
+```
 
-- `npx playwright test --grep "@starbucks"`
-- `npx playwright test --grep "@burger-king"`
-- `npx playwright test --grep "@vips"`
-- `npx playwright test --grep "@chilis"`
+Para iniciar una combinación nueva, ejecuta `npm run dataset:init -- <datasetId>` después de validar sus datos.
 
-Cada prueba de ordenamiento utiliza una taxonomía de cuatro etiquetas:
+Los escenarios dependientes consumen el Excel generado por el escenario anterior. Para ejecutar un CP de forma independiente, su artefacto de entrada debe existir y corresponder al mismo juego de datos. Consulta [Ejecución](docs/execution.md) para ver proyectos, dependencias, timeouts y comandos adicionales.
 
-| Tipo | Etiqueta | Ejemplo |
-| --- | --- | --- |
-| Funcionalidad general | `@ordenamiento-gpo-mod` | Ejecuta toda la solución de ordenamiento |
-| Escenario funcional | Una etiqueta según la operación | `@descarga-plantilla`, `@carga-menu`, `@visor-core` |
-| Caso de prueba | Identificador de la matriz | `@CP13` |
-| Marca | Marca del juego de datos | `@starbucks`, `@burger-king`, `@vips`, `@chilis` |
+## Tags
 
-Los tags de escenario disponibles son:
+Cada prueba utiliza una taxonomía de cuatro etiquetas:
 
-- `@descarga-plantilla`
-- `@edicion-plantilla`
-- `@carga-filtros`
-- `@carga-menu`
-- `@visor-core`
-- `@json`
-- `@reorden-grupos`
-- `@reorden-modificadores`
-- `@reorden-grupos-modificadores`
-- `@actualizar-menu`
+| Nivel          | Ejemplo                   |
+| -------------- | ------------------------- |
+| Solución      | `@ordenamiento-gpo-mod` |
+| Escenario      | `@carga-menu`           |
+| Caso de prueba | `@CP16`                 |
+| Marca          | `@burger-king`          |
 
-Se pueden combinar filtros. Por ejemplo, para ejecutar las descargas de Burger King:
+## Arquitectura resumida
 
-- `node node_modules/playwright/cli.js test --grep '(?=.*@descarga-plantilla)(?=.*@burger-king)'`
+```text
+tests/e2e/ordenamiento-gpo-mod/
+├── scenarios/     Specs reutilizables
+├── workflows/     Coordinación de flujos funcionales
+├── services/      Operaciones de Gmail y Excel
+├── validators/    Validaciones fuera de las páginas
+├── data/          Datasets y generación de casos
+└── support/       Contexto de ejecución y artefactos
 
-En PowerShell, para filtrar varios CP sin que `|` sea interpretado por `npx.cmd`, se
-puede llamar directamente al CLI:
+pages/              Page Objects por pantalla
+src/integrations/   Clientes de servicios externos
+src/reporting/      Evidencias y reporters
+src/utils/          Procesamiento y utilidades compartidas
+```
+Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El reporte conserva el CP, la marca y la combinación utilizada. Consulta [Arquitectura](docs/architecture.md) para conocer las responsabilidades de cada capa.
 
-- `node node_modules/playwright/cli.js test --grep '@CP1|@CP13|@CP25|@CP37'`
-- `node node_modules/playwright/cli.js test --project=ordenamiento-actualizar-menu --grep '@CP10\b' --workers=1`
+## Documentación
 
-Los reportes se generan en `playwright-report`, `reports` y `artifacts`. Estas rutas
-tambien estan excluidas del repositorio.
-
-Cada resultado de los diez escenarios implementados incorpora el adjunto HTML
-`Flujo funcional`. Esta sección traduce los pasos reales de Playwright a lenguaje
-de usuario y marca cada uno como `COMPLETADO`, `FALLÓ` o `NO EJECUTADO`. Si el caso
-se detiene, el último paso alcanzado muestra el fallo y los posteriores permanecen
-como no ejecutados.
-
-La sección Annotations queda reservada para los datos funcionales usados en la
-ejecución: juego de datos, país, marca, sucursal, agregador, tipo de menú y, cuando
-aplican, fecha, tipo de carga, versionamiento, descripciones, item y categoría.
-Las rutas de archivos, datos del correo, resultados del portal e identificadores
-técnicos permanecen en sus evidencias HTML o JSON y no se duplican en Annotations.
-
-Los tiempos del navegador se configuran mediante `TEST_TIMEOUT_MS`,
-`ACTION_TIMEOUT_MS`, `EXPECT_TIMEOUT_MS`, `NAVIGATION_TIMEOUT_MS` y
-`FILE_OPERATION_TIMEOUT_MS`. La linea base utiliza 80, 30, 35, 50 y 50 segundos
-respectivamente para tolerar conexiones lentas. La espera de Gmail se mantiene
-independiente en `GMAIL_POLL_TIMEOUT_MS`. CP10/CP22/CP34/CP46 también usan
-`VISOR_PROPAGATION_TIMEOUT_MS` (cinco minutos por defecto) para reconsultar el
-Visor CORE hasta que la publicación se refleje.
-
-## Dropdowns dinamicos
-
-Los dropdowns y autocompletes de Ant Design deben operarse mediante helpers o Page
-Objects compartidos. No se deben usar indices (`nth`, `first`, `last`) para
-seleccionar opciones dinamicas, porque el overlay puede re-renderizarse entre la
-lectura y el click. La seleccion debe reconstruir el locator por contenido estable
-justo antes de interactuar, validar el valor aplicado y reintentar solo ante fallos
-tecnicos de overlay/renderizado, sin ocultar datos inexistentes ni ambiguedades.
-
-## Alcance actual
-
-La linea base contiene configuracion DEV, sesion Admin manual reutilizable,
-fixtures, diagnostico de fallos y reporting. Estan implementados los diez primeros
-escenarios por marca: descarga, edicion, carga de filtros, carga de menu, validacion
-en Visor CORE, validacion JSON, tres modalidades de reordenamiento y modificacion
-de un menu existente. Esto cubre CP1-CP10, CP13-CP22, CP25-CP34 y CP37-CP46.
-Conservacion del orden y multiples grupos permanecen pendientes.
-
-## Organizacion por escenarios y juegos de datos
-
-Los 48 CP documentales se representan mediante 12 escenarios funcionales y cuatro
-juegos de datos principales. Los diez escenarios implementados se encuentran en
-`tests/e2e/ordenamiento-gpo-mod/scenarios`; cada archivo genera cuatro resultados
-independientes conservando el numero de CP y el tag de la marca.
-Los cuatro juegos actuales habilitan explicitamente estos diez escenarios. Los
-escenarios 11 y 12 se habilitaran cuando su flujo y sus datos esten confirmados.
-
-El escenario de modificacion de menu existente usa la plantilla generada por el
-escenario 9 en su primera ejecucion y el ultimo Excel del propio CP en las siguientes.
-Captura y valida el JSON vigente del producto antes de publicar. Después invierte
-las posiciones del primer y último grupo entre tres grupos seleccionados, mantiene
-el grupo intermedio como control y cambia únicamente el primer y último modificador
-del primer grupo; los demás grupos y modificadores actúan como controles sin cambio.
-Carga filtros con `Actualización` y `Versionar menu = Si`, publica el menú y espera
-hasta `VISOR_PROPAGATION_TIMEOUT_MS` mientras reconsulta el Visor CORE.
-
-La validación final compara tres estados: JSON inicial, estado esperado construido
-con los cambios del Excel y JSON final. Verifica identidad del producto, categoría,
-cantidad e IDs únicos de todos los grupos y modificadores, nombres, posiciones
-modificadas y posiciones de control. Un elemento faltante, duplicado, un cambio no
-solicitado o una posición que no se propagó hace fallar el caso. El reporte adjunta
-la comparación semántica inicial/esperada/final, la cobertura de entidades modificadas
-y controles, el resumen de cambios en Excel, ambas plantillas y las evidencias
-separadas de los correos de filtros y menú. Los datos dinámicos de descripción
-comparten un único identificador local con formato
-`AUTO_CP10_YYYYMMDD_HHmmss` por ejecución.
-
-Los juegos de datos principales proporcionados por el cliente son:
-
-- `starbucks-wtc-rappi`: MEXICO, STARBUCKS, STARBUCKS WTC - 38109, RAPPI, Delivery BIS, sin fecha.
-- `burgerking-aguilas-uber`: MEXICO, BURGER KING, Burger King - Aguilas - 12513, UBER EATS, Delivery, fecha 03/08/2026.
-- `vips-las-torres-uber`: MEXICO, VIPS, Vips - Las torres 81099, UBER EATS, Delivery, sin fecha.
-- `chilis-aeropuerto-t1-uber`: MEXICO, CHILIS, CHILIS AEROPUERTO T1 - 1075, UBER EATS, Delivery Codisys, sin fecha.
-
-Cuando cambia la sucursal de un juego de datos se debe ejecutar nuevamente su caso
-de descarga. Los escenarios posteriores no reutilizan plantillas pertenecientes a
-otro dataset.
-
-- `data/catalog.data.ts`: paises, marcas, sucursales, agregadores y tipos de menu.
-- `data/datasets.data.ts`: combinaciones aprobadas y su aplicabilidad.
-- `data/case-mapping.data.ts`: relacion entre CP, escenario y juego de datos.
-- `data/scenario-data.ts`: diferencias que pertenecen a un escenario concreto.
-- `data/scenario-defaults.ts`: valores compartidos dentro de cada escenario.
-- `workflows/`: coordinacion de los flujos funcionales.
-- `services/`: acceso a Gmail y procesamiento de Excel.
-- `validators/`: validaciones de resultados fuera de los Page Objects.
-- `support/execution-context.ts`: datos de corrida, combinacion, archivos y entidades seleccionadas.
-
-Para agregar una combinacion se registra primero cualquier valor nuevo en el
-catalogo y despues se agrega una entrada unica en `datasets.data.ts`. Se usa
-`runAllScenarios: true` solo cuando los 12 escenarios son aplicables. En caso
-contrario, se declara el mapa `scenarios` con los escenarios habilitados. Si el
-cliente asigna numeros de CP, se incorpora su mapeo sin duplicar el spec.
-
-La edicion selecciona solamente un item que exista en `Items`, tenga una Categoria
-no vacia en la hoja `Categorias` (columnas `Categoria` o `Nombre Categoria`, segun
-el formato de la marca), este relacionado con un grupo modificador habilitado con
-`*` para el agregador del juego de datos y tenga al menos dos modificadores tambien
-habilitados para ese agregador. Las columnas de agregadores no se modifican. Registra en el reporte el item, su categoria,
-el grupo modificador, los modificadores, los valores anteriores y los valores nuevos.
-La validacion en Visor CORE reconstruye estas entidades
-desde el mismo Excel y valida exactamente los valores cargados. Para seleccionar
-la sucursal en el Visor utiliza el CECO (`branchCode`), porque el codigo se muestra
-separado del nombre en sus tarjetas; las pantallas de descarga y carga conservan
-la etiqueta completa configurada en `selectionLabel`. El producto se identifica
-con el nombre comercial y los precios disponibles en las columnas `Price Level`;
-si aun existen varias coincidencias, se utiliza `Daypart`. Una coincidencia ausente
-o ambigua falla con el detalle de las tarjetas encontradas. Despues de abrir la
-previsualizacion, el flujo pulsa `Ver JSON` y valida en el JSON del producto el item,
-su descripcion, el grupo modificador y sus modificadores, incluido su orden. El
-JSON consultado se adjunta al reporte como evidencia, sin crear un archivo auxiliar
-en la carpeta de artefactos. El reporte conserva el error original aunque alguno de estos paneles no llegue a
-abrirse. El workflow
-`menu-golden-path.workflow.ts` permite transportar directamente el contexto de la
-edicion cuando se ejecute la cadena completa.
-
-Organizar Page Objects por pantallas y pruebas por escenarios o flujos. Los specs
-deben importar `test` y `expect` desde `@fixtures/base.fixture`, utilizar assertions
-web-first y mantener URLs, contexto y selectores fuera de los casos de prueba.
-
-## Anotaciones del reporte
-
-Las anotaciones normales conservan el contexto de ejecucion, los archivos de referencia,
-el item seleccionado y su categoria. El detalle de grupos, modificadores, ordenes y
-celdas modificadas se consulta en el resumen visual HTML, el Excel y el JSON adjuntos.
-Los diagnosticos de fallo se adjuntan como JSON para mantener limpia esta seccion.
-Los casos CP5, CP17, CP29 y CP41 adjuntan `Comparacion de datos esperados y obtenidos
-en Visor CORE` con los valores leidos del Excel y los textos encontrados en la interfaz.
-
-Los adjuntos Excel muestran el nombre real del archivo con el formato
-`<descripcion funcional> - <archivo.xls|xlsx>`. Las evidencias de Gmail identifican
-el proceso que origino el mensaje: `Validacion del correo de carga de filtros`,
-`Detalle tecnico del correo de carga de filtros`, `Validacion del correo de carga de
-menu` o `Detalle tecnico del correo de carga de menu`. La descarga inicial conserva
-los nombres generales `Validacion del correo recibido` y `Detalle tecnico de validacion
-del correo`.
-El contexto que Playwright genera automaticamente cuando falla una prueba se muestra como
-`Contexto tecnico del fallo` en los reportes.
+- [Autenticación](docs/authentication.md)
+- [Ejecución, proyectos y dependencias](docs/execution.md)
+- [Arquitectura](docs/architecture.md)
+- [Juegos de datos](docs/datasets.md)
+- [Procesamiento de Excel](docs/excel-processing.md)
+- [Integración con Gmail](docs/integrations/gmail.md)
+- [Reporting y evidencias](docs/reporting.md)
+- [Convenciones de desarrollo](docs/development-guidelines.md)
+- [Escenarios funcionales](docs/scenarios/README.md)
+- [S10: modificación de un menú existente](docs/scenarios/S10-update-existing-menu.md)
+- [S11: conservación del orden en una recarga](docs/scenarios/S11-preserve-order.md)
+- [Catálogo documental de casos de prueba](docs/catalogo_casos_prueba_ordenamiento_gpo_mod_mod_agosto.md)

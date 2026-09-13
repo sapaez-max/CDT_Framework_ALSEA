@@ -82,8 +82,10 @@ export function parseMenuSnapshot(jsonText: string): MenuSnapshot {
 export function buildExpectedMenuSnapshot(
   baseline: MenuSnapshot,
   changes: ReorderChange[],
+  overrides: { itemName?: string } = {},
 ): MenuSnapshot {
   const expected = structuredClone(baseline);
+  if (overrides.itemName) expected.name = overrides.itemName;
 
   for (const change of changes) {
     if (change.entityType === 'modifierGroup') {
@@ -138,7 +140,7 @@ export function compareMenuSnapshots(
 
   add('Sucursal menu ID', baseline.branchMenuId, actual.branchMenuId);
   add('Item ID', baseline.itemId, actual.itemId);
-  add('Nombre del item sin cambios', baseline.name, actual.name);
+  add('Nombre esperado del item', expected.name, actual.name);
   add('Descripcion del item sin cambios', baseline.description, actual.description);
   add('Categorias sin cambios', baseline.categories, actual.categories);
   add('Cantidad total de grupos', baseline.groups.length, actual.groups.length);

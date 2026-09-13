@@ -4,7 +4,7 @@ import { MenuAdministrationPage } from '@pages/menu/MenuAdministrationPage';
 import type { GmailClient } from '@src/integrations/google/gmail-client';
 import { excelContentType } from '@src/reporting/email-evidence';
 import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
-import type { FilterLoadCase } from '../data/types';
+import type { FilterLoadCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';

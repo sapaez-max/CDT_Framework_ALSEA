@@ -6,7 +6,7 @@ import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
 import { excelContentType } from '@src/reporting/email-evidence';
 import { buildModificationEvidenceHtml } from '@src/reporting/modification-evidence';
 import { CoreViewerPage } from '@pages/menu/CoreViewerPage';
-import type { ReorderGroupsAndModifiersCase, ReorderGroupsCase, ReorderModifiersCase } from '../data/types';
+import type { ReorderGroupsAndModifiersCase, ReorderGroupsCase, ReorderModifiersCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';

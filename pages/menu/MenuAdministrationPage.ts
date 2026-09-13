@@ -155,19 +155,19 @@ export class MenuAdministrationPage extends BasePage {
   }
 
   async loadFilters(caseData: FilterLoadFormData, filePath: string): Promise<void> {
-    await this.selectField(/Pa[iÃ­]s|Pa[iÃ­]ses/i, caseData.country);
+    await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
     await this.selectField(/Marca|Marcas/i, caseData.brand);
 
     if (caseData.aggregator) {
       await this.selectField(/Agregador|Agregadores/i, caseData.aggregator);
     }
 
-    await this.selectField(/Tipo de men[uÃº]|Tipo men[uÃº]/i, caseData.childMenuType ?? caseData.menuType);
+    await this.selectField(/Tipo de men[uú]|Tipo men[uú]/i, caseData.childMenuType ?? caseData.menuType);
 
     await this.selectField(/Tipo de carga/i, caseData.loadType);
-    await this.selectField(/Versionar men[uÃº]|Versionar menu/i, caseData.versionMenu);
+    await this.selectField(/Versionar men[uú]|Versionar menu/i, caseData.versionMenu);
 
-    const description = this.page.locator('#description').or(this.page.getByPlaceholder(/Ingresa una descripci[oÃ³]n/i)).first();
+    const description = this.page.locator('#description').or(this.page.getByPlaceholder(/Ingresa una descripci[oó]n/i)).first();
     await expect(description, 'Debe existir el campo de descripcion para la carga de filtros').toBeVisible();
     await description.fill(caseData.description);
 
@@ -403,7 +403,7 @@ export class MenuAdministrationPage extends BasePage {
       return this.filterLoadAntSelectAt(4);
     }
 
-    if (this.matchesLabel(label, ['Versionar menu', 'Versionar menÃº'])) {
+    if (this.matchesLabel(label, ['Versionar menu', 'Versionar menú'])) {
       return this.filterLoadAntSelectAt(5);
     }
 

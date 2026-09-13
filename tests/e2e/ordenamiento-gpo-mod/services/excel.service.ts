@@ -7,6 +7,7 @@ import {
 } from '@utils/case-artifact-manager';
 import {
   readGroupsAndModifiersExpectation,
+  renameItemPreservingOrder,
   reorderGroupsAndModifiers,
   reorderOnlyGroups,
   reorderOnlyModifiers,
@@ -46,6 +47,24 @@ export class ExcelService {
     };
   }
 
+  inspectCompleteExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    const sourcePath = getExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    const selected = readGroupsAndModifiersExpectation(sourcePath, aggregator);
+    return {
+      sourcePath,
+      expectation: readGroupsAndModifiersExpectation(sourcePath, aggregator, {
+        itemId: selected.itemId,
+        includeAllGroups: true,
+        minimumModifiersPerGroup: 1,
+        excludeAutomatedModifiers: false,
+      }),
+    };
+  }
+
   updateExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
     const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
       previousCase: sourceCaseId,
@@ -59,6 +78,28 @@ export class ExcelService {
       artifactScope: scope,
       sourceCopy,
       strategy: 'selective-update',
+    });
+  }
+
+  reloadPreservingOrder(
+    caseId: string,
+    sourceCaseId: string,
+    aggregator: string,
+    scope: ArtifactScope,
+    itemNameSuffix: string,
+  ) {
+    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    return renameItemPreservingOrder({
+      caseId,
+      sourceCaseId,
+      aggregator,
+      artifactScope: scope,
+      sourceCopy,
+      itemNameSuffix,
     });
   }
 

@@ -9,6 +9,8 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:list": "playwright test --list",
+    "data:validate": "node scripts/data/validate-datasets.cjs",
+    "dataset:init": "node scripts/data/init-dataset.cjs",
     "test:smoke": "playwright test --grep @smoke",
     "test:regression": "playwright test --grep @regression",
     "report": "playwright show-report",

@@ -1,7 +1,7 @@
 import type { TestInfo } from '@fixtures/base.fixture';
-import { getBrand } from '../data/catalog.data';
+import { getBrand } from '../data/datasets.data';
 import { getDataset } from '../data/datasets.data';
-import type { CaseMetadata } from '../data/types';
+import type { CaseMetadata } from '../data/cases.data';
 import type { ArtifactScope } from '@utils/case-artifact-manager';
 
 export type EntityChange = {
@@ -43,8 +43,8 @@ export function createExecutionContext(caseData: CaseMetadata): ExecutionContext
     scenario: caseData.scenario,
     datasetId: dataset.id,
     country: dataset.country,
-    brand: brand.name,
-    branch: dataset.branchCode,
+    brand: brand.label,
+    branch: dataset.branch.code,
     aggregator: dataset.aggregator,
     menuType: dataset.menuType,
     modifiers: [],

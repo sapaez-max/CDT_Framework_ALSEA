@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { LoginPage } from '@pages/auth/LoginPage';
 import { excelContentType } from '@src/reporting/email-evidence';
 import { buildExcelAttachmentName } from '@src/reporting/attachment-name';
-import type { JsonValidationCase } from '../data/types';
+import type { JsonValidationCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import {
   annotateExecutionContext,

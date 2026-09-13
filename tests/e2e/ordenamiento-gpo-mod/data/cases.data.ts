@@ -1,25 +1,208 @@
-import type { EmailBodyExpectation } from '@src/integrations/google/gmail-client';
-import { getBrand } from './catalog.data';
-import { getCaseMapping, getPreviousCaseId } from './case-mapping.data';
-import { isScenarioEnabled, testDatasets } from './datasets.data';
-import { scenarioData } from './scenario-data';
-import { scenarioDefaults } from './scenario-defaults';
 import type {
-  CaseMetadata,
-  CoreViewerCase,
-  FilterLoadCase,
-  JsonValidationCase,
-  ReorderGroupsAndModifiersCase,
-  MenuLoadCase,
-  ReorderGroupsCase,
-  ReorderModifiersCase,
-  ScenarioId,
-  TemplateDownloadCase,
-  TemplateEditCase,
-  TestDataset,
-  UpdateExistingMenuCase,
-} from './types';
+  FilterLoadFormData,
+  MenuLoadFormData,
+  TemplateDownloadFormData,
+} from '@pages/menu/MenuAdministrationPage';
+import type { EmailBodyExpectation } from '@src/integrations/google/gmail-client';
+import {
+  getBrand,
+  isScenarioEnabled,
+  resolveCaseId,
+  testDatasets,
+  type BrandTag,
+  type CaseId,
+  type ScenarioId,
+  type TestDataset,
+} from './datasets.data';
 
+export type { CaseId, ScenarioId, TestDataset } from './datasets.data';
+
+export type CaseMetadata = {
+  cp: CaseId;
+  id: CaseId;
+  scenario: ScenarioId;
+  datasetId: string;
+  title: string;
+  requirement: string;
+  sourceSheet: string;
+  sourceRow: number;
+  brandTag: BrandTag;
+};
+
+export type TemplateDownloadCase = TemplateDownloadFormData & CaseMetadata & {
+  scenario: 'downloadTemplate';
+  selectDate: boolean;
+};
+
+export type TemplateEditCase = CaseMetadata & {
+  scenario: 'editTemplate';
+  sourceCaseId: CaseId;
+  aggregator: string;
+  selectionStrategy: 'first-eligible-group';
+};
+
+export type FilterLoadCase = FilterLoadFormData & CaseMetadata & {
+  scenario: 'uploadFilters';
+  sourceCaseId: CaseId;
+  expectedEmailSubject?: string | RegExp;
+  expectedEmailBodyFields?: EmailBodyExpectation[];
+};
+
+export type MenuLoadCase = MenuLoadFormData & CaseMetadata & {
+  scenario: 'uploadMenu';
+  sourceCaseId: CaseId;
+  expectedEmailSubject: string | RegExp;
+  expectedEmailBodyFields: EmailBodyExpectation[];
+};
+
+export type CoreViewerCase = CaseMetadata & {
+  scenario: 'validateVisor';
+  sourceCaseId: CaseId;
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+};
+
+export type JsonValidationCase = CaseMetadata & {
+  scenario: 'validateJson';
+  sourceCaseId: CaseId;
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+};
+
+export type ReorderCaseBase = CaseMetadata & {
+  sourceCaseId: CaseId;
+  country: string | string[];
+  brand: string | string[];
+  branch: string | string[];
+  aggregator: string | string[];
+  menuType: string | string[];
+  loadType: string | string[];
+  versionMenu: string | string[];
+  filterDescription: string;
+  menuDescription: string;
+  expectedFilterMessage: RegExp;
+  expectedMenuMessage: RegExp;
+  expectedMenuEmailSubject: string | RegExp;
+  expectedMenuEmailBodyFields: EmailBodyExpectation[];
+  expectedFilterEmailSubject?: string | RegExp;
+  expectedFilterEmailBodyFields?: EmailBodyExpectation[];
+};
+
+export type ReorderGroupsCase = ReorderCaseBase & {
+  scenario: 'reorderGroups';
+};
+
+export type ReorderModifiersCase = ReorderCaseBase & {
+  scenario: 'reorderModifiers';
+};
+
+export type ReorderGroupsAndModifiersCase = ReorderCaseBase & {
+  scenario: 'reorderGroupsAndModifiers';
+};
+
+export type UpdateExistingMenuCase = ReorderCaseBase & {
+  scenario: 'updateExistingMenu';
+};
+
+export type PreserveOrderCase = ReorderCaseBase & {
+  scenario: 'preserveOrder';
+};
+
+type ScenarioDefinition = {
+  number: number;
+  title: string;
+  sourceScenario?: ScenarioId;
+};
+
+const scenarioDefinitions = {
+  downloadTemplate: {
+    number: 1,
+    title: 'Descarga de plantilla para registro de filtros',
+  },
+  editTemplate: {
+    number: 2,
+    title: 'Edicion de plantilla de grupos modificadores y modificadores',
+    sourceScenario: 'downloadTemplate',
+  },
+  uploadFilters: {
+    number: 3,
+    title: 'Cargar filtros para un nuevo menu',
+    sourceScenario: 'editTemplate',
+  },
+  uploadMenu: {
+    number: 4,
+    title: 'Carga exitosa de un nuevo menu',
+    sourceScenario: 'uploadFilters',
+  },
+  validateVisor: {
+    number: 5,
+    title: 'Validacion en Visor CORE',
+    sourceScenario: 'uploadMenu',
+  },
+  validateJson: {
+    number: 6,
+    title: 'Validacion del JSON',
+    sourceScenario: 'validateVisor',
+  },
+  reorderGroups: {
+    number: 7,
+    title: 'Ordenamiento de grupos modificadores',
+    sourceScenario: 'downloadTemplate',
+  },
+  reorderModifiers: {
+    number: 8,
+    title: 'Ordenamiento de modificadores',
+    sourceScenario: 'downloadTemplate',
+  },
+  reorderGroupsAndModifiers: {
+    number: 9,
+    title: 'Ordenamiento de grupos y modificadores',
+    sourceScenario: 'downloadTemplate',
+  },
+  updateExistingMenu: {
+    number: 10,
+    title: 'Modificacion de un menu existente',
+    sourceScenario: 'reorderGroupsAndModifiers',
+  },
+  preserveOrder: {
+    number: 11,
+    title: 'Conservacion del orden configurado',
+    sourceScenario: 'updateExistingMenu',
+  },
+  multipleGroups: {
+    number: 12,
+    title: 'Validacion de multiples grupos modificadores',
+    sourceScenario: 'preserveOrder',
+  },
+} as const satisfies Record<ScenarioId, ScenarioDefinition>;
+
+const scenarioDefaults = {
+  downloadTemplate: {
+    selectDate: false,
+  },
+  editTemplate: {
+    selectionStrategy: 'first-eligible-group' as const,
+  },
+  uploadFilters: {
+    loadType: 'Nuevo menú',
+    versionMenu: 'No',
+  },
+  uploadMenu: {
+    descriptionPrefix: 'Carga de nuevo menú',
+  },
+  updateExistingMenu: {
+    loadType: 'Actualización',
+    versionMenu: 'Si',
+  },
+} as const;
+
+const requirement = 'OrdenamientoGpoMod&Mod 2.0';
 const expectedTemplateRequestMessage = /confirmaci[oó]n|correo|enviad[ao]|plantilla|[eé]xito|correctamente/i;
 const expectedFilterLoadMessage = /filtros|correo|enviad[ao]|cargad[ao]|[eé]xito|correctamente/i;
 const expectedMenuLoadMessage = /El men[uú]\s+se est[aá]\s+cargando correctamente\.?/i;
@@ -29,19 +212,20 @@ const expectedMenuLoadEmailSubject = 'Carga de menu - Desarrollo';
 export const downloadTemplateCases: TemplateDownloadCase[] = enabledDatasets('downloadTemplate')
   .map(dataset => {
     const brand = getBrand(dataset.brandId);
-    const override = scenarioData[dataset.brandId].downloadTemplate;
+    const override = dataset.overrides?.downloadTemplate;
+    const downloadDate = override?.date;
 
     return {
       ...metadata(dataset, 'downloadTemplate'),
       scenario: 'downloadTemplate',
       country: dataset.country,
-      brand: brand.name,
-      baseBranch: dataset.branchCode,
+      brand: brand.label,
+      baseBranch: dataset.branch.code,
       menuType: dataset.menuType,
-      selectDate: override?.selectDate ?? scenarioDefaults.downloadTemplate.selectDate,
-      downloadDate: override?.downloadDate,
+      selectDate: downloadDate ? true : scenarioDefaults.downloadTemplate.selectDate,
+      downloadDate,
       exactSelections: override?.exactSelections,
-      expectedBaseBranchLabel: override?.expectedBaseBranchLabel,
+      expectedBaseBranchLabel: override?.exactSelections ? dataset.branch.label : undefined,
       expectedMessage: expectedTemplateRequestMessage,
     };
   });
@@ -50,7 +234,7 @@ export const editTemplateCases: TemplateEditCase[] = enabledDatasets('editTempla
   .map(dataset => ({
     ...metadata(dataset, 'editTemplate'),
     scenario: 'editTemplate',
-    sourceCaseId: getPreviousCaseId(dataset.id, 'editTemplate'),
+    sourceCaseId: sourceCaseId(dataset, 'editTemplate'),
     aggregator: dataset.aggregator,
     selectionStrategy: scenarioDefaults.editTemplate.selectionStrategy,
   }));
@@ -63,26 +247,16 @@ export const uploadFiltersCases: FilterLoadCase[] = enabledDatasets('uploadFilte
     return {
       ...caseMetadata,
       scenario: 'uploadFilters',
-      sourceCaseId: getPreviousCaseId(dataset.id, 'uploadFilters'),
+      sourceCaseId: sourceCaseId(dataset, 'uploadFilters'),
       country: dataset.country,
-      brand: brand.name,
+      brand: brand.label,
       aggregator: displayAggregator(dataset.aggregator),
       menuType: dataset.menuType,
       loadType: scenarioDefaults.uploadFilters.loadType,
       versionMenu: scenarioDefaults.uploadFilters.versionMenu,
       description: `Carga de filtros ${caseMetadata.id}`,
       expectedMessage: expectedFilterLoadMessage,
-      ...(dataset.brandId === 'starbucks' ? {
-        expectedEmailSubject: expectedFilterLoadEmailSubject,
-        expectedEmailBodyFields: [
-          { label: 'Pais', values: dataset.country },
-          { label: 'Marca', values: brand.name },
-          { label: 'Tipo menu', values: dataset.menuType },
-          { label: 'Items', values: 'Items' },
-          { label: 'GrupoModificadores', values: 'GrupoModificadores' },
-          { label: 'Modificadores', values: 'Modificadores' },
-        ],
-      } : {}),
+      ...filterEmailExpectations(dataset, brand.label),
     };
   });
 
@@ -90,181 +264,47 @@ export const uploadMenuCases: MenuLoadCase[] = enabledDatasets('uploadMenu')
   .map(dataset => {
     const brand = getBrand(dataset.brandId);
     const caseMetadata = metadata(dataset, 'uploadMenu');
-    const branch = brand.branches.find(candidate => candidate.code === dataset.branchCode);
-    const branchSelection = branch?.selectionLabel
-      ?? (branch?.name ? `${branch.name} - ${branch.code}` : dataset.branchCode);
 
     return {
       ...caseMetadata,
       scenario: 'uploadMenu',
-      sourceCaseId: getPreviousCaseId(dataset.id, 'uploadMenu'),
+      sourceCaseId: sourceCaseId(dataset, 'uploadMenu'),
       country: dataset.country,
-      brand: brand.name,
-      branch: branchSelection,
+      brand: brand.label,
+      branch: dataset.branch.label,
       aggregator: dataset.aggregator,
       menuType: dataset.menuType,
       description: `${scenarioDefaults.uploadMenu.descriptionPrefix} ${caseMetadata.id}`,
       expectedMessage: expectedMenuLoadMessage,
       expectedEmailSubject: expectedMenuLoadEmailSubject,
       expectedEmailBodyFields: menuLoadEmailBodyFields(
-        brand.name,
+        brand.label,
         displayAggregator(dataset.aggregator),
-        dataset.branchCode,
+        dataset.branch.code,
       ),
     };
   });
 
 export const validateVisorCases: CoreViewerCase[] = enabledDatasets('validateVisor')
-  .map(dataset => {
-    const brand = getBrand(dataset.brandId);
-
-    return {
-      ...metadata(dataset, 'validateVisor'),
-      scenario: 'validateVisor',
-      sourceCaseId: getPreviousCaseId(dataset.id, 'validateVisor'),
-      country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
-      aggregator: displayAggregator(dataset.aggregator),
-      menuType: dataset.menuType,
-    };
-  });
+  .map(dataset => buildViewerCase(dataset, 'validateVisor'));
 
 export const validateJsonCases: JsonValidationCase[] = enabledDatasets('validateJson')
-  .map(dataset => {
-    const brand = getBrand(dataset.brandId);
+  .map(dataset => buildViewerCase(dataset, 'validateJson'));
 
-    return {
-      ...metadata(dataset, 'validateJson'),
-      scenario: 'validateJson',
-      sourceCaseId: getPreviousCaseId(dataset.id, 'validateJson'),
-      country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
-      aggregator: displayAggregator(dataset.aggregator),
-      menuType: dataset.menuType,
-    };
-  });
+export const reorderGroupsCases: ReorderGroupsCase[] = buildReorderCases(
+  'reorderGroups',
+  'Ordenamiento de grupos',
+);
 
-export const reorderGroupsCases: ReorderGroupsCase[] = enabledDatasets('reorderGroups')
-  .map(dataset => {
-    const brand = getBrand(dataset.brandId);
-    const caseMetadata = metadata(dataset, 'reorderGroups');
+export const reorderModifiersCases: ReorderModifiersCase[] = buildReorderCases(
+  'reorderModifiers',
+  'Ordenamiento de modificadores',
+);
 
-    return {
-      ...caseMetadata,
-      scenario: 'reorderGroups',
-      sourceCaseId: getCaseMapping(dataset.id, 'downloadTemplate').cp,
-      country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
-      aggregator: displayAggregator(dataset.aggregator),
-      menuType: dataset.menuType,
-      loadType: scenarioDefaults.uploadFilters.loadType,
-      versionMenu: scenarioDefaults.uploadFilters.versionMenu,
-      filterDescription: `Ordenamiento de grupos ${caseMetadata.id}`,
-      menuDescription: `${scenarioDefaults.uploadMenu.descriptionPrefix} ${caseMetadata.id}`,
-      expectedFilterMessage: expectedFilterLoadMessage,
-      expectedMenuMessage: expectedMenuLoadMessage,
-      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
-      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
-        brand.name,
-        displayAggregator(dataset.aggregator),
-        dataset.branchCode,
-      ),
-      ...(dataset.brandId === 'starbucks' ? {
-        expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
-        expectedFilterEmailBodyFields: [
-          { label: 'Pais', values: dataset.country },
-          { label: 'Marca', values: brand.name },
-          { label: 'Tipo menu', values: dataset.menuType },
-          { label: 'Items', values: 'Items' },
-          { label: 'GrupoModificadores', values: 'GrupoModificadores' },
-          { label: 'Modificadores', values: 'Modificadores' },
-        ],
-      } : {}),
-    };
-  });
-
-export const reorderModifiersCases: ReorderModifiersCase[] = enabledDatasets('reorderModifiers')
-  .map(dataset => {
-    const brand = getBrand(dataset.brandId);
-    const caseMetadata = metadata(dataset, 'reorderModifiers');
-
-    return {
-      ...caseMetadata,
-      scenario: 'reorderModifiers',
-      sourceCaseId: getCaseMapping(dataset.id, 'downloadTemplate').cp,
-      country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
-      aggregator: displayAggregator(dataset.aggregator),
-      menuType: dataset.menuType,
-      loadType: scenarioDefaults.uploadFilters.loadType,
-      versionMenu: scenarioDefaults.uploadFilters.versionMenu,
-      filterDescription: `Ordenamiento de modificadores ${caseMetadata.id}`,
-      menuDescription: `${scenarioDefaults.uploadMenu.descriptionPrefix} ${caseMetadata.id}`,
-      expectedFilterMessage: expectedFilterLoadMessage,
-      expectedMenuMessage: expectedMenuLoadMessage,
-      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
-      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
-        brand.name,
-        displayAggregator(dataset.aggregator),
-        dataset.branchCode,
-      ),
-      ...(dataset.brandId === 'starbucks' ? {
-        expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
-        expectedFilterEmailBodyFields: [
-          { label: 'Pais', values: dataset.country },
-          { label: 'Marca', values: brand.name },
-          { label: 'Tipo menu', values: dataset.menuType },
-          { label: 'Items', values: 'Items' },
-          { label: 'GrupoModificadores', values: 'GrupoModificadores' },
-          { label: 'Modificadores', values: 'Modificadores' },
-        ],
-      } : {}),
-    };
-  });
-
-export const reorderGroupsAndModifiersCases: ReorderGroupsAndModifiersCase[] = enabledDatasets('reorderGroupsAndModifiers')
-  .map(dataset => {
-    const brand = getBrand(dataset.brandId);
-    const caseMetadata = metadata(dataset, 'reorderGroupsAndModifiers');
-
-    return {
-      ...caseMetadata,
-      scenario: 'reorderGroupsAndModifiers',
-      sourceCaseId: getCaseMapping(dataset.id, 'downloadTemplate').cp,
-      country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
-      aggregator: displayAggregator(dataset.aggregator),
-      menuType: dataset.menuType,
-      loadType: scenarioDefaults.uploadFilters.loadType,
-      versionMenu: scenarioDefaults.uploadFilters.versionMenu,
-      filterDescription: `Ordenamiento de grupos y modificadores ${caseMetadata.id}`,
-      menuDescription: `${scenarioDefaults.uploadMenu.descriptionPrefix} ${caseMetadata.id}`,
-      expectedFilterMessage: expectedFilterLoadMessage,
-      expectedMenuMessage: expectedMenuLoadMessage,
-      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
-      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
-        brand.name,
-        displayAggregator(dataset.aggregator),
-        dataset.branchCode,
-      ),
-      ...(dataset.brandId === 'starbucks' ? {
-        expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
-        expectedFilterEmailBodyFields: [
-          { label: 'Pais', values: dataset.country },
-          { label: 'Marca', values: brand.name },
-          { label: 'Tipo menu', values: dataset.menuType },
-          { label: 'Items', values: 'Items' },
-          { label: 'GrupoModificadores', values: 'GrupoModificadores' },
-          { label: 'Modificadores', values: 'Modificadores' },
-        ],
-      } : {}),
-    };
-  });
+export const reorderGroupsAndModifiersCases: ReorderGroupsAndModifiersCase[] = buildReorderCases(
+  'reorderGroupsAndModifiers',
+  'Ordenamiento de grupos y modificadores',
+);
 
 export const updateExistingMenuCases: UpdateExistingMenuCase[] = enabledDatasets('updateExistingMenu')
   .map(dataset => {
@@ -274,10 +314,10 @@ export const updateExistingMenuCases: UpdateExistingMenuCase[] = enabledDatasets
     return {
       ...caseMetadata,
       scenario: 'updateExistingMenu',
-      sourceCaseId: getPreviousCaseId(dataset.id, 'updateExistingMenu'),
+      sourceCaseId: sourceCaseId(dataset, 'updateExistingMenu'),
       country: dataset.country,
-      brand: brand.name,
-      branch: dataset.branchCode,
+      brand: brand.label,
+      branch: dataset.branch.code,
       aggregator: displayAggregator(dataset.aggregator),
       menuType: dataset.menuType,
       loadType: scenarioDefaults.updateExistingMenu.loadType,
@@ -288,19 +328,43 @@ export const updateExistingMenuCases: UpdateExistingMenuCase[] = enabledDatasets
       expectedMenuMessage: expectedMenuLoadMessage,
       expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
       expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
-        brand.name,
+        brand.label,
         displayAggregator(dataset.aggregator),
-        dataset.branchCode,
+        dataset.branch.code,
       ),
       expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
-      expectedFilterEmailBodyFields: [
-        { label: 'Pais', values: dataset.country },
-        { label: 'Marca', values: brand.name },
-        { label: 'Tipo menu', values: dataset.menuType },
-        { label: 'Items', values: 'Items' },
-        { label: 'GrupoModificadores', values: 'GrupoModificadores' },
-        { label: 'Modificadores', values: 'Modificadores' },
-      ],
+      expectedFilterEmailBodyFields: filterEmailBodyFields(dataset, brand.label),
+    };
+  });
+
+export const preserveOrderCases: PreserveOrderCase[] = enabledDatasets('preserveOrder')
+  .map(dataset => {
+    const brand = getBrand(dataset.brandId);
+    const caseMetadata = metadata(dataset, 'preserveOrder');
+
+    return {
+      ...caseMetadata,
+      scenario: 'preserveOrder',
+      sourceCaseId: sourceCaseId(dataset, 'preserveOrder'),
+      country: dataset.country,
+      brand: brand.label,
+      branch: dataset.branch.code,
+      aggregator: displayAggregator(dataset.aggregator),
+      menuType: dataset.menuType,
+      loadType: scenarioDefaults.updateExistingMenu.loadType,
+      versionMenu: scenarioDefaults.updateExistingMenu.versionMenu,
+      filterDescription: `Recarga sin cambios de orden ${caseMetadata.id}`,
+      menuDescription: `Publicacion sin cambios de orden ${caseMetadata.id}`,
+      expectedFilterMessage: expectedFilterLoadMessage,
+      expectedMenuMessage: expectedMenuLoadMessage,
+      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
+      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
+        brand.label,
+        displayAggregator(dataset.aggregator),
+        dataset.branch.code,
+      ),
+      expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
+      expectedFilterEmailBodyFields: filterEmailBodyFields(dataset, brand.label),
     };
   });
 
@@ -309,12 +373,119 @@ function enabledDatasets(scenario: ScenarioId): TestDataset[] {
 }
 
 function metadata(dataset: TestDataset, scenario: ScenarioId): CaseMetadata {
-  const mapping = getCaseMapping(dataset.id, scenario);
+  const brand = getBrand(dataset.brandId);
+  const definition = scenarioDefinitions[scenario];
+  const cp = resolveCaseId(dataset, scenario);
+
   return {
-    ...mapping,
-    id: mapping.cp,
-    brandTag: getBrand(dataset.brandId).tag,
+    cp,
+    id: cp,
+    scenario,
+    datasetId: dataset.id,
+    title: `${definition.title} - ${brand.displayName}`,
+    requirement,
+    sourceSheet: brand.sourceSheet,
+    sourceRow: definition.number + 1,
+    brandTag: brand.tag,
   };
+}
+
+function sourceCaseId(dataset: TestDataset, scenario: ScenarioId): CaseId {
+  const definition: ScenarioDefinition = scenarioDefinitions[scenario];
+  const sourceScenario = definition.sourceScenario;
+  if (!sourceScenario) throw new Error(`${scenario} no tiene un escenario de origen.`);
+  return resolveCaseId(dataset, sourceScenario);
+}
+
+function buildViewerCase(
+  dataset: TestDataset,
+  scenario: 'validateVisor',
+): CoreViewerCase;
+function buildViewerCase(
+  dataset: TestDataset,
+  scenario: 'validateJson',
+): JsonValidationCase;
+function buildViewerCase(
+  dataset: TestDataset,
+  scenario: 'validateVisor' | 'validateJson',
+): CoreViewerCase | JsonValidationCase {
+  const brand = getBrand(dataset.brandId);
+  return {
+    ...metadata(dataset, scenario),
+    scenario,
+    sourceCaseId: sourceCaseId(dataset, scenario),
+    country: dataset.country,
+    brand: brand.label,
+    branch: dataset.branch.code,
+    aggregator: displayAggregator(dataset.aggregator),
+    menuType: dataset.menuType,
+  };
+}
+
+type ReorderScenario =
+  | 'reorderGroups'
+  | 'reorderModifiers'
+  | 'reorderGroupsAndModifiers';
+
+type ReorderCaseByScenario<S extends ReorderScenario> = ReorderCaseBase & { scenario: S };
+
+function buildReorderCases<S extends ReorderScenario>(
+  scenario: S,
+  description: string,
+): ReorderCaseByScenario<S>[] {
+  return enabledDatasets(scenario).map(dataset => {
+    const brand = getBrand(dataset.brandId);
+    const caseMetadata = metadata(dataset, scenario);
+
+    return {
+      ...caseMetadata,
+      scenario,
+      sourceCaseId: sourceCaseId(dataset, scenario),
+      country: dataset.country,
+      brand: brand.label,
+      branch: dataset.branch.code,
+      aggregator: displayAggregator(dataset.aggregator),
+      menuType: dataset.menuType,
+      loadType: scenarioDefaults.uploadFilters.loadType,
+      versionMenu: scenarioDefaults.uploadFilters.versionMenu,
+      filterDescription: `${description} ${caseMetadata.id}`,
+      menuDescription: `${scenarioDefaults.uploadMenu.descriptionPrefix} ${caseMetadata.id}`,
+      expectedFilterMessage: expectedFilterLoadMessage,
+      expectedMenuMessage: expectedMenuLoadMessage,
+      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
+      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
+        brand.label,
+        displayAggregator(dataset.aggregator),
+        dataset.branch.code,
+      ),
+      ...filterEmailExpectations(dataset, brand.label),
+    };
+  });
+}
+
+function filterEmailExpectations(
+  dataset: TestDataset,
+  brand: string,
+): Pick<ReorderCaseBase, 'expectedFilterEmailSubject' | 'expectedFilterEmailBodyFields'> {
+  if (!dataset.overrides?.uploadFilters?.validateEmail) return {};
+  return {
+    expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
+    expectedFilterEmailBodyFields: filterEmailBodyFields(dataset, brand),
+  };
+}
+
+function filterEmailBodyFields(
+  dataset: TestDataset,
+  brand: string,
+): EmailBodyExpectation[] {
+  return [
+    { label: 'Pais', values: dataset.country },
+    { label: 'Marca', values: brand },
+    { label: 'Tipo menu', values: dataset.menuType },
+    { label: 'Items', values: 'Items' },
+    { label: 'GrupoModificadores', values: 'GrupoModificadores' },
+    { label: 'Modificadores', values: 'Modificadores' },
+  ];
 }
 
 function menuLoadEmailBodyFields(
