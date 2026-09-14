@@ -5,7 +5,7 @@
 ## Estandar aplicado
 Este catalogo conserva una estructura uniforme por escenario y caso de prueba, con bandera `Implementado` y secciones de titulo, descripcion, precondiciones, datos, pasos y resultado esperado.
 
-Tambien se consideraron las convenciones del framework documentadas en `README.md` y `AGENTS.md`: los escenarios documentales se mantienen en `docs/`, la automatizacion futura debe vivir en `tests/e2e/`, y las specs deberan importar `test` y `expect` desde `@fixtures/base.fixture` sin esperas fijas.
+Tambien se consideraron las convenciones del framework documentadas en `README.md` y `AGENTS.md`: los escenarios documentales se mantienen en `docs/documentation/`, la automatizacion futura debe vivir en `tests/e2e/`, y las specs deberan importar `test` y `expect` desde `@fixtures/base.fixture` sin esperas fijas.
 
 ## Trazabilidad del Excel
 - Archivo fuente: `docs/MP_OrdenamientoGpoMod_Mod_AGOSTO.xlsx`

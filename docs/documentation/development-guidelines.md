@@ -2,7 +2,7 @@
 
 ## Fuente normativa
 
-Las instrucciones obligatorias del framework están en [AGENTS.md](../AGENTS.md). Esta guía explica su aplicación para mantenimiento humano; ante una diferencia, debe actualizarse la documentación para conservar una sola regla coherente.
+Las instrucciones obligatorias del framework están en [AGENTS.md](../../AGENTS.md). Esta guía explica su aplicación para mantenimiento humano; ante una diferencia, debe actualizarse la documentación para conservar una sola regla coherente.
 
 ## Organización
 

@@ -32,4 +32,4 @@ Los escenarios 1 al 11 cubren actualmente CP1-CP11, CP13-CP23, CP25-CP35 y CP37-
 
 S01 genera el Excel recibido; S02 lo edita; S03 carga filtros; S04 publica el menú; S05 valida el Visor y S06 valida el JSON. S07, S08 y S09 realizan nuevas modificaciones de orden sobre los artefactos anteriores. S10 parte del menú publicado y compara su estado antes y después de una actualización selectiva.
 
-Consulta [Ejecución](../execution.md) para las reglas de dependencia y [Procesamiento de Excel](../excel-processing.md) para los criterios de selección. El detalle especial de S10 está en [S10: modificación de un menú existente](S10-update-existing-menu.md).
+Consulta [Ejecución](../execution.md) para las reglas de dependencia y [Procesamiento de Excel](../excel-processing.md) para los criterios de selección.

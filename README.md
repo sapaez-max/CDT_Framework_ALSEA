@@ -41,7 +41,7 @@ Después del acceso manual, vuelve a la terminal, presiona Enter y valida la ses
 npm run test:session
 ```
 
-La sesión se almacena en `.auth/admin.json`, está excluida por Git y no debe compartirse. Consulta [Autenticación](docs/authentication.md) para conocer expiración, configuración de Chrome y diagnóstico.
+La sesión se almacena en `.auth/admin.json`, está excluida por Git y no debe compartirse. Consulta [Autenticación](docs/documentation/authentication.md) para conocer expiración, configuración de Chrome y diagnóstico.
 
 ## Ejecución
 
@@ -64,7 +64,7 @@ node node_modules/playwright/cli.js test --grep '(?=.*@descarga-plantilla)(?=.*@
 
 Para iniciar una combinación nueva, ejecuta `npm run dataset:init -- <datasetId>` después de validar sus datos.
 
-Los escenarios dependientes consumen el Excel generado por el escenario anterior. Para ejecutar un CP de forma independiente, su artefacto de entrada debe existir y corresponder al mismo juego de datos. Consulta [Ejecución](docs/execution.md) para ver proyectos, dependencias, timeouts y comandos adicionales.
+Los escenarios dependientes consumen el Excel generado por el escenario anterior. Para ejecutar un CP de forma independiente, su artefacto de entrada debe existir y corresponder al mismo juego de datos. Consulta [Ejecución](docs/documentation/execution.md) para ver proyectos, dependencias, timeouts y comandos adicionales.
 
 ## Tags
 
@@ -93,19 +93,18 @@ src/integrations/   Clientes de servicios externos
 src/reporting/      Evidencias y reporters
 src/utils/          Procesamiento y utilidades compartidas
 ```
-Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El reporte conserva el CP, la marca y la combinación utilizada. Consulta [Arquitectura](docs/architecture.md) para conocer las responsabilidades de cada capa.
+
+Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El reporte conserva el CP, la marca y la combinación utilizada. Consulta [Arquitectura](docs/documentation/architecture.md) para conocer las responsabilidades de cada capa.
 
 ## Documentación
 
-- [Autenticación](docs/authentication.md)
-- [Ejecución, proyectos y dependencias](docs/execution.md)
-- [Arquitectura](docs/architecture.md)
-- [Juegos de datos](docs/datasets.md)
-- [Procesamiento de Excel](docs/excel-processing.md)
-- [Integración con Gmail](docs/integrations/gmail.md)
-- [Reporting y evidencias](docs/reporting.md)
-- [Convenciones de desarrollo](docs/development-guidelines.md)
-- [Escenarios funcionales](docs/scenarios/README.md)
-- [S10: modificación de un menú existente](docs/scenarios/S10-update-existing-menu.md)
-- [S11: conservación del orden en una recarga](docs/scenarios/S11-preserve-order.md)
-- [Catálogo documental de casos de prueba](docs/catalogo_casos_prueba_ordenamiento_gpo_mod_mod_agosto.md)
+- [Autenticación](docs/documentation/authentication.md)
+- [Ejecución, proyectos y dependencias](docs/documentation/execution.md)
+- [Arquitectura](docs/documentation/architecture.md)
+- [Juegos de datos](docs/documentation/datasets.md)
+- [Procesamiento de Excel](docs/documentation/excel-processing.md)
+- [Integración con Gmail](docs/documentation/integrations/gmail.md)
+- [Reporting y evidencias](docs/documentation/reporting.md)
+- [Convenciones de desarrollo](docs/documentation/development-guidelines.md)
+- [Escenarios funcionales](docs/documentation/scenarios/README.md)
+- [Catálogo documental de casos de prueba](docs/documentation/catalogo_casos_prueba_ordenamiento_gpo_mod_mod_agosto.md)
