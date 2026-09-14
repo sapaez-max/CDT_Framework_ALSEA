@@ -19,7 +19,7 @@ Este documento concentra la explicación funcional de todos los escenarios. Los 
 | S09 | CP9, CP21, CP33, CP45 | `@reorden-grupos-modificadores` | Cambiar grupos y modificadores en una ejecución | S01 | `ordenamiento-reorden-grupos-modificadores` | Implementado |
 | S10 | CP10, CP22, CP34, CP46 | `@actualizar-menu` | Modificar selectivamente un menú publicado | S09 | `ordenamiento-actualizar-menu` | Implementado |
 | S11 | CP11, CP23, CP35, CP47 | `@conservar-orden` | Recargar un menú conservando su orden | S10 | `ordenamiento-conservar-orden` | Implementado |
-| S12 | CP12, CP24, CP36, CP48 | Por definir | Validar múltiples grupos modificadores | S11 | Por definir | Pendiente |
+| S12 | CP12, CP24, CP36, CP48 | `@multiples-grupos` | Validar múltiples grupos modificadores | S11 | `ordenamiento-multiples-grupos` | Implementado |
 
 ## Correspondencia por marca
 
@@ -271,7 +271,19 @@ Cuando un grupo del Excel contiene varios códigos en `Subgrupos`, cada código 
 
 **Objetivo documental:** validar el comportamiento de un producto asociado a múltiples grupos modificadores y comprobar que cada grupo conserve sus relaciones y el orden configurado.
 
-**Estado:** pendiente de definición funcional e implementación. Antes de automatizarlo deben confirmarse con el cliente los datos de prueba, el comportamiento esperado, la dependencia definitiva y los criterios de aceptación. Actualmente no existe un spec ni un proyecto Playwright para este escenario.
+**Flujo funcional:**
+
+1. Localizar la plantilla publicada por S11 para el mismo dataset.
+2. Consultar el producto en Visor CORE y guardar su JSON como estado inicial.
+3. Seleccionar un producto con múltiples grupos modificadores.
+4. Crear una copia del Excel agregando un identificador `AUTO_CPxx_YYYYMMDD_HHmmss` al nombre comercial del producto.
+5. Cargar los filtros como actualización y volver a publicar el menú.
+6. Esperar los correos de procesamiento.
+7. Consultar el producto actualizado y comparar sus grupos, modificadores y órdenes contra el estado esperado.
+
+**Validaciones principales:** el producto conserva múltiples grupos modificadores, cada grupo mantiene sus relaciones y posiciones, los modificadores quedan asociados al grupo correcto y no aparecen duplicados.
+
+**Salida:** plantillas de origen y resultado, resumen comparativo, correos y comparación antes/después de Visor CORE.
 
 ## Ejecución por escenario
 

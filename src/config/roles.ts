@@ -16,6 +16,7 @@ export const chainedReorderModifiersTestPattern = new RegExp(`${scenarioPath}08-
 export const chainedReorderGroupsAndModifiersTestPattern = new RegExp(`${scenarioPath}09-reorder-groups-and-modifiers\\.spec\\.ts`);
 export const chainedUpdateExistingMenuTestPattern = new RegExp(`${scenarioPath}10-update-existing-menu\\.spec\\.ts`);
 export const chainedPreserveOrderTestPattern = new RegExp(`${scenarioPath}11-preserve-order\\.spec\\.ts`);
+export const chainedMultipleGroupsTestPattern = new RegExp(`${scenarioPath}12-multiple-groups\\.spec\\.ts`);
 export const chainedOrdenamientoTestPattern = new RegExp(`${scenarioPath}.*\\.spec\\.ts`);
 
 export function getRoleProjectConfigs(): Project[] {

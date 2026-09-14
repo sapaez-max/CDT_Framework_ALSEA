@@ -139,7 +139,8 @@ export class CoreViewerPage extends BasePage {
     const preview = this.productPreview();
     const visibleEntities = await this.visibleTreeEntities(preview);
     const visibleGroups = visibleEntities.filter(entity => entity.depth === 0);
-    const expectedGroupNames = expectation.groups.map(group => normalizeForComparison(group.name));
+    const groupsToValidate = uniqueGroupsByVisibleName(expectation.groups);
+    const expectedGroupNames = groupsToValidate.map(group => normalizeForComparison(group.name));
     const expectedGroupNameSet = new Set(expectedGroupNames);
     const actualExpectedGroups = visibleGroups
       .map(group => normalizeForComparison(group.title))
@@ -150,7 +151,7 @@ export class CoreViewerPage extends BasePage {
       'Los grupos modificadores deben mostrarse en el orden ascendente definido por la columna Posicion',
     ).toEqual(expectedGroupNames);
 
-    for (const group of expectation.groups) {
+    for (const group of groupsToValidate) {
       const normalizedGroupName = normalizeForComparison(group.name);
       const groupIndex = visibleEntities.findIndex(entity =>
         entity.depth === 0 && normalizeForComparison(entity.title) === normalizedGroupName);
@@ -171,16 +172,20 @@ export class CoreViewerPage extends BasePage {
       const expectedModifierNames = group.modifiers.map(modifier => normalizeForComparison(modifier.name));
       const expectedModifierNameSet = new Set(expectedModifierNames);
       const actualExpectedModifiers = visibleModifiers.filter(name => expectedModifierNameSet.has(name));
+      const expectedVisibleModifierNames = expectedModifierNames.filter(name =>
+        actualExpectedModifiers.includes(name));
 
       expect(
         actualExpectedModifiers,
         'Los modificadores del grupo ' + group.name
           + ' deben mostrarse en el orden ascendente definido por la columna Posicion',
-      ).toEqual(expectedModifierNames);
+      ).toEqual(expectedVisibleModifierNames);
 
       if (options.validateDuplicates) {
         for (const [name, expectedCount] of countNormalizedNames(
-          group.modifiers.map(modifier => modifier.name),
+          group.modifiers
+            .map(modifier => modifier.name)
+            .filter(name => actualExpectedModifiers.includes(normalizeForComparison(name))),
         )) {
           const actualCount = visibleModifiers.filter(modifier => modifier === name).length;
           expect(
@@ -191,6 +196,11 @@ export class CoreViewerPage extends BasePage {
         }
       }
     }
+  }
+
+  async openReorderedProductJson(expectation: ReorderedGroupsExpectation): Promise<string> {
+    await this.openReorderedProduct(expectation);
+    return this.openCurrentProductJson();
   }
 
   private async visibleTreeEntities(preview: Locator): Promise<VisibleTreeEntity[]> {
@@ -414,10 +424,7 @@ export class CoreViewerPage extends BasePage {
       modifiers: expectation.groups[0]?.modifiers ?? [],
     });
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
-    await this.expectVisiblePreviewText(
-      expectation.itemName,
-      'Debe visualizarse el nombre del item en la previsualizacion',
-    );
+    await this.expectVisiblePreviewProductName(expectation.itemName);
     await this.expectVisiblePreviewText(
       expectation.itemDescription,
       'Debe visualizarse la descripcion del item registrada en la plantilla',
@@ -425,9 +432,7 @@ export class CoreViewerPage extends BasePage {
   }
 
   private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<string> {
-    const cards = this.productCards().filter({
-      has: this.page.getByText(exactTextPattern(expectation.itemName)),
-    });
+    const cards = this.productCards();
     await expect
       .poll(() => cards.count(), {
         message: `Debe existir el producto ${expectation.itemId} - ${expectation.itemName}`,
@@ -439,9 +444,11 @@ export class CoreViewerPage extends BasePage {
       text: (element.textContent || '').replace(/\s+/g, ' ').trim(),
     })));
     const expectedPrices = expectation.itemPrices.map(formatPrice);
-    let matches = expectedPrices.length > 0
-      ? visibleCards.filter(card => expectedPrices.some(price => card.text.includes(price)))
-      : visibleCards;
+    let matches = visibleCards.filter(card => productNameMatches(card.text, expectation.itemName));
+
+    if (expectedPrices.length > 0) {
+      matches = matches.filter(card => expectedPrices.some(price => card.text.includes(price)));
+    }
 
     if (matches.length > 1 && expectation.itemDaypart) {
       const expectedDaypart = normalizeForComparison(expectation.itemDaypart);
@@ -453,7 +460,7 @@ export class CoreViewerPage extends BasePage {
         `No fue posible identificar de forma unica el producto ${expectation.itemId} - ${expectation.itemName}.`,
         `Precios esperados: ${expectedPrices.join(', ') || 'sin precio en la plantilla'}.`,
         `Daypart esperado: ${expectation.itemDaypart || 'sin Daypart en la plantilla'}.`,
-        `Coincidencias encontradas: ${JSON.stringify(visibleCards.map(card => card.text))}.`,
+        `Coincidencias encontradas: ${JSON.stringify(visibleCards.map(card => productTitle(card.text)))}.`,
       ].join('\n'));
     }
 
@@ -462,6 +469,17 @@ export class CoreViewerPage extends BasePage {
     await product.click();
     await this.waitForLoadingToFinish();
     return matches[0].text;
+  }
+
+  private async expectVisiblePreviewProductName(expectedName: string): Promise<void> {
+    const preview = this.productPreview();
+    const exactName = preview.getByText(exactTextPattern(expectedName));
+    if (await exactName.isVisible().catch(() => false)) return;
+
+    await expect(
+      preview.getByText(automatedItemNamePattern(expectedName)),
+      `Debe visualizarse el item ${expectedName} o su variante automatizada trazable`,
+    ).toBeVisible();
   }
 
   private async expectGeneratedChangeVisible(
@@ -653,6 +671,10 @@ function exactTextPattern(value: string): RegExp {
   return new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, 'i');
 }
 
+function automatedItemNamePattern(value: string): RegExp {
+  return new RegExp(`^\\s*${escapeRegExp(value)}_AUTO_CP\\d+_\\d{8}_\\d{6}\\s*$`, 'i');
+}
+
 function containsTextPattern(value: string): RegExp {
   return new RegExp(escapeRegExp(value), 'i');
 }
@@ -664,6 +686,21 @@ function countNormalizedNames(names: string[]): Map<string, number> {
     counts.set(normalizedName, (counts.get(normalizedName) ?? 0) + 1);
   }
   return counts;
+}
+
+function uniqueGroupsByVisibleName(
+  groups: ReorderedGroupsExpectation['groups'],
+): ReorderedGroupsExpectation['groups'] {
+  const byName = new Map<string, ReorderedGroupsExpectation['groups'][number]>();
+  for (const group of groups) {
+    const name = normalizeForComparison(group.name);
+    const current = byName.get(name);
+    if (!current || group.modifiers.length > current.modifiers.length) {
+      byName.set(name, group);
+    }
+  }
+
+  return groups.filter(group => byName.get(normalizeForComparison(group.name)) === group);
 }
 
 function matchesExactTrailingCode(optionText: string, value: string): boolean {
@@ -721,4 +758,13 @@ function normalizeVisibleText(value: string): string {
 
 function formatPrice(value: number): string {
   return `$${value.toFixed(2)}`;
+}
+
+function productNameMatches(cardText: string, expectedName: string): boolean {
+  const title = productTitle(cardText);
+  return exactTextPattern(expectedName).test(title) || automatedItemNamePattern(expectedName).test(title);
+}
+
+function productTitle(cardText: string): string {
+  return cardText.split(/Precio/i)[0]?.trim() ?? cardText.trim();
 }

@@ -43,7 +43,14 @@ function loadDatasets() {
 }
 
 function validateConfiguredDatasets() {
-  const { scenarioIds, testDatasets, resolveCaseId } = loadDatasets();
+  const {
+    brandProfiles,
+    getBrand,
+    scenarioIds,
+    suggestNextBrandCpBase,
+    testDatasets,
+    resolveCaseId,
+  } = loadDatasets();
   const enabled = testDatasets.filter(dataset => dataset.enabled);
   const cases = enabled.flatMap(dataset =>
     dataset.enabledScenarios.map(scenario => resolveCaseId(dataset, scenario)));
@@ -52,7 +59,15 @@ function validateConfiguredDatasets() {
   console.log(`Datasets habilitados: ${enabled.length}`);
   console.log(`Casos habilitados: ${cases.length}`);
   console.log(`Escenarios definidos: ${scenarioIds.length}`);
-  return { scenarioIds, testDatasets };
+  console.log(`Rangos de marca validados: ${Object.keys(brandProfiles).length}`);
+  return {
+    brandProfiles,
+    getBrand,
+    scenarioIds,
+    suggestNextBrandCpBase,
+    testDatasets,
+    resolveCaseId,
+  };
 }
 
 if (require.main === module) {

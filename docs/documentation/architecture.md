@@ -5,10 +5,10 @@
 Los 48 casos de prueba documentales se representan mediante 12 escenarios funcionales. Cada spec recorre los juegos de datos habilitados y genera un resultado independiente por combinación, conservando la trazabilidad del CP y la marca sin duplicar el flujo.
 
 ```text
-Escenario funcional + juego de datos + mapeo de CP → ejecución Playwright
+Escenario funcional + marca + juego de datos → ejecución Playwright
 ```
 
-Un juego de datos representa una combinación aprobada de país, marca, sucursal, agregador y tipo de menú. Una marca puede tener varias combinaciones sin requerir nuevos specs.
+Un juego de datos representa una combinación aprobada de país, marca, sucursal, agregador y tipo de menú. La marca conserva el rango CP documental; una marca puede tener varias combinaciones sin requerir nuevos specs ni nuevos CP.
 
 ## Responsabilidades
 
@@ -18,7 +18,7 @@ Un juego de datos representa una combinación aprobada de país, marca, sucursal
 | `workflows/` | Coordinar el recorrido funcional y transportar el contexto |
 | `services/` | Encapsular las operaciones de Gmail y Excel |
 | `validators/` | Comparar resultados fuera de los Page Objects |
-| `data/` | Definir catálogos, datasets, valores de escenario y mapeos de CP |
+| `data/` | Definir catálogos, perfiles de marca, datasets, valores de escenario y mapeos de CP |
 | `support/` | Administrar contexto, annotations y artefactos |
 | `pages/` | Localizar e interactuar con pantallas del portal |
 | `src/integrations/` | Implementar clientes de servicios externos |
@@ -31,12 +31,12 @@ Los Page Objects se limitan a selectores y operaciones de pantalla. La coordinac
 
 La carpeta `data/` contiene únicamente:
 
-- `datasets.data.ts`: perfiles de marca, combinaciones aprobadas, escenarios habilitados, trazabilidad, overrides, tipos básicos y validación.
+- `datasets.data.ts`: perfiles de marca con trazabilidad CP, combinaciones aprobadas, escenarios habilitados, overrides, tipos básicos y validación.
 - `cases.data.ts`: definición y valores generales de escenarios, dependencias, cálculo de CP, tipos específicos y constructores de casos.
 
 Los specs, workflows y validators consumen los casos generados. Agregar una combinación normal solo modifica `datasets.data.ts`; `cases.data.ts` cambia cuando se incorpora o modifica un comportamiento funcional.
 
-Los escenarios 1 al 11 están implementados. El escenario 12 permanece definido, pero no se habilita hasta confirmar su flujo y sus datos.
+Los escenarios 1 al 12 están implementados y habilitados para los datasets configurados.
 
 ## Contexto entre etapas
 

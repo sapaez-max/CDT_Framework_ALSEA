@@ -1,4 +1,5 @@
 import type { ReorderChange } from './group-reorder-template';
+import type { ReorderedGroupsExpectation } from './group-reorder-template';
 
 export type MenuModifierSnapshot = {
   id: string;
@@ -83,7 +84,9 @@ export function buildExpectedMenuSnapshot(
   baseline: MenuSnapshot,
   changes: ReorderChange[],
   overrides: { itemName?: string } = {},
+  options: { verifyPreviousPositions?: boolean } = {},
 ): MenuSnapshot {
+  const verifyPreviousPositions = options.verifyPreviousPositions ?? true;
   const expected = structuredClone(baseline);
   if (overrides.itemName) expected.name = overrides.itemName;
 
@@ -95,7 +98,7 @@ export function buildExpectedMenuSnapshot(
           `No se pudo asociar de forma unica el grupo Excel ${change.entityId} con el JSON inicial.`,
         );
       }
-      verifyPreviousPosition(change, groups[0].position);
+      if (verifyPreviousPositions) verifyPreviousPosition(change, groups[0].position);
       groups[0].position = Number(change.newValue);
       continue;
     }
@@ -113,8 +116,47 @@ export function buildExpectedMenuSnapshot(
         `No se pudo asociar de forma unica el modificador ${change.entityId} con el JSON inicial.`,
       );
     }
-    verifyPreviousPosition(change, selected[0].modifier.position);
+    if (verifyPreviousPositions) verifyPreviousPosition(change, selected[0].modifier.position);
     selected[0].modifier.position = Number(change.newValue);
+  }
+
+  return expected;
+}
+
+export function buildExpectedMenuSnapshotFromTemplate(
+  baseline: MenuSnapshot,
+  expectation: ReorderedGroupsExpectation,
+  overrides: { itemName?: string } = {},
+): MenuSnapshot {
+  const expected = structuredClone(baseline);
+  if (overrides.itemName) expected.name = overrides.itemName;
+
+  for (const expectedGroup of expectation.groups) {
+    const idMatches = expected.groups.filter(group => groupIdMatches(group.id, expectedGroup.id));
+    const nameMatches = expected.groups.filter(group =>
+      normalize(group.name) === normalize(expectedGroup.name));
+    const groups = idMatches.length === 1 ? idMatches : nameMatches;
+    if (groups.length !== 1) {
+      throw new Error(
+        `No se pudo asociar de forma unica el grupo Excel ${expectedGroup.id} con el JSON inicial.`,
+      );
+    }
+
+    const group = groups[0];
+    group.position = expectedGroup.expectedOrder;
+
+    for (const expectedModifier of expectedGroup.modifiers) {
+      const matches = group.modifiers.filter(modifier => modifier.id === expectedModifier.id);
+      const namedMatches = matches.filter(modifier =>
+        normalize(modifier.name) === normalize(expectedModifier.name));
+      const selected = namedMatches.length === 1 ? namedMatches : matches;
+      if (selected.length !== 1) {
+        throw new Error(
+          `No se pudo asociar de forma unica el modificador ${expectedModifier.id} del grupo ${expectedGroup.id} con el JSON inicial.`,
+        );
+      }
+      selected[0].position = expectedModifier.order;
+    }
   }
 
   return expected;
@@ -234,7 +276,9 @@ function verifyPreviousPosition(change: ReorderChange, actual: number): void {
 function groupIdMatches(jsonId: string, excelId: string): boolean {
   return jsonId === excelId
     || jsonId.startsWith(`${excelId}_`)
-    || jsonId.split('_').includes(excelId);
+    || excelId.startsWith(`${jsonId}_`)
+    || jsonId.split('_').includes(excelId)
+    || excelId.split('_').includes(jsonId);
 }
 
 function modifierKey(groupId: string, modifierId: string): string {

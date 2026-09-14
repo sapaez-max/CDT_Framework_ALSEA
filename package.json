@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node scripts/runners/run-all-with-history.cjs",
+    "test:full": "node scripts/runners/test-full.cjs",
     "test:raw": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",

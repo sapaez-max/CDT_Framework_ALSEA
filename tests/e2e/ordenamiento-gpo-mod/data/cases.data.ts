@@ -114,6 +114,10 @@ export type PreserveOrderCase = ReorderCaseBase & {
   scenario: 'preserveOrder';
 };
 
+export type MultipleGroupsCase = ReorderCaseBase & {
+  scenario: 'multipleGroups';
+};
+
 type ScenarioDefinition = {
   number: number;
   title: string;
@@ -355,6 +359,37 @@ export const preserveOrderCases: PreserveOrderCase[] = enabledDatasets('preserve
       versionMenu: scenarioDefaults.updateExistingMenu.versionMenu,
       filterDescription: `Recarga sin cambios de orden ${caseMetadata.id}`,
       menuDescription: `Publicacion sin cambios de orden ${caseMetadata.id}`,
+      expectedFilterMessage: expectedFilterLoadMessage,
+      expectedMenuMessage: expectedMenuLoadMessage,
+      expectedMenuEmailSubject: expectedMenuLoadEmailSubject,
+      expectedMenuEmailBodyFields: menuLoadEmailBodyFields(
+        brand.label,
+        displayAggregator(dataset.aggregator),
+        dataset.branch.code,
+      ),
+      expectedFilterEmailSubject: expectedFilterLoadEmailSubject,
+      expectedFilterEmailBodyFields: filterEmailBodyFields(dataset, brand.label),
+    };
+  });
+
+export const multipleGroupsCases: MultipleGroupsCase[] = enabledDatasets('multipleGroups')
+  .map(dataset => {
+    const brand = getBrand(dataset.brandId);
+    const caseMetadata = metadata(dataset, 'multipleGroups');
+
+    return {
+      ...caseMetadata,
+      scenario: 'multipleGroups',
+      sourceCaseId: sourceCaseId(dataset, 'multipleGroups'),
+      country: dataset.country,
+      brand: brand.label,
+      branch: dataset.branch.code,
+      aggregator: displayAggregator(dataset.aggregator),
+      menuType: dataset.menuType,
+      loadType: scenarioDefaults.updateExistingMenu.loadType,
+      versionMenu: scenarioDefaults.updateExistingMenu.versionMenu,
+      filterDescription: `Ordenamiento con multiples grupos ${caseMetadata.id}`,
+      menuDescription: `Publicacion con multiples grupos ${caseMetadata.id}`,
       expectedFilterMessage: expectedFilterLoadMessage,
       expectedMenuMessage: expectedMenuLoadMessage,
       expectedMenuEmailSubject: expectedMenuLoadEmailSubject,

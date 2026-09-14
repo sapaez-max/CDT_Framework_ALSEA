@@ -4,7 +4,7 @@ Framework de automatización E2E para validar los flujos de ordenamiento de grup
 
 ## Estado actual
 
-Los 48 casos documentales se representan mediante 12 escenarios funcionales reutilizables y juegos de datos por marca. Están implementados los escenarios 1 al 11, que cubren CP1-CP11, CP13-CP23, CP25-CP35 y CP37-CP47. Permanece pendiente la validación de múltiples grupos modificadores.
+Los 48 casos documentales se representan mediante 12 escenarios funcionales reutilizables y juegos de datos por marca. Están implementados los escenarios 1 al 12, que cubren CP1-CP12, CP13-CP24, CP25-CP36 y CP37-CP48.
 
 ## Stack
 
@@ -47,11 +47,18 @@ La sesión se almacena en `.auth/admin.json`, está excluida por Git y no debe c
 
 ```powershell
 npm test
+npm run test:full
 npm run test:headed
 npm run report
 ```
 
 `npm test` ejecuta la suite configurada y registra el historial básico de la corrida. `npm run test:smoke` valida actualmente la sesión autenticada; todavía no existe una selección funcional de regresión mediante `@regression`.
+
+`npm run test:full` abre un asistente para ejecutar la corrida completa de una marca usando el dataset permanente ya configurado. Solo solicita la marca, resuelve sus CP con la configuración actual y ejecuta Playwright con `workers=1`. Para validar sin abrir navegador ni consultar Gmail:
+
+```powershell
+npm run test:full -- --dry-run
+```
 
 Ejemplos de ejecución dirigida:
 
@@ -94,7 +101,7 @@ src/reporting/      Evidencias y reporters
 src/utils/          Procesamiento y utilidades compartidas
 ```
 
-Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El reporte conserva el CP, la marca y la combinación utilizada. Consulta [Arquitectura](docs/documentation/architecture.md) para conocer las responsabilidades de cada capa.
+Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El CP documental pertenece a la marca; el reporte conserva también el `datasetId` para distinguir sucursal, agregador, tipo de menú y artefactos. Consulta [Arquitectura](docs/documentation/architecture.md) para conocer las responsabilidades de cada capa.
 
 ## Documentación
 

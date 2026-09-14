@@ -22,6 +22,10 @@ export type BrandProfile = {
   displayName: string;
   tag: BrandTag;
   sourceSheet: string;
+  traceability: {
+    cpBase: number;
+    cpOverrides?: Partial<Record<ScenarioId, CaseId>>;
+  };
 };
 
 export const brandProfiles = {
@@ -30,24 +34,28 @@ export const brandProfiles = {
     displayName: 'Starbucks',
     tag: '@starbucks',
     sourceSheet: 'SBX',
+    traceability: { cpBase: 1 },
   },
   'burger-king': {
     label: 'BURGER KING',
     displayName: 'Burger King',
     tag: '@burger-king',
     sourceSheet: 'BK',
+    traceability: { cpBase: 13 },
   },
   vips: {
     label: 'VIPS',
     displayName: 'VIPS',
     tag: '@vips',
     sourceSheet: 'VIPS',
+    traceability: { cpBase: 25 },
   },
   chilis: {
     label: 'CHILIS',
     displayName: "Chili's",
     tag: '@chilis',
     sourceSheet: 'Chilis',
+    traceability: { cpBase: 37 },
   },
 } as const satisfies Record<string, BrandProfile>;
 
@@ -75,10 +83,6 @@ export type TestDataset = {
   };
   aggregator: string;
   menuType: string;
-  traceability: {
-    cpBase: number;
-    cpOverrides?: Partial<Record<ScenarioId, CaseId>>;
-  };
   enabledScenarios: readonly ScenarioId[];
   overrides?: DatasetOverrides;
 };
@@ -95,9 +99,10 @@ const implementedScenarios = [
   'reorderGroupsAndModifiers',
   'updateExistingMenu',
   'preserveOrder',
+  'multipleGroups',
 ] as const satisfies readonly ScenarioId[];
 
-export const testDatasets = [
+const configuredTestDatasets = [
   {
     id: 'starbucks-wtc-rappi',
     enabled: true,
@@ -110,7 +115,6 @@ export const testDatasets = [
     },
     aggregator: 'RAPPI',
     menuType: 'Delivery BIS',
-    traceability: { cpBase: 1 },
     enabledScenarios: implementedScenarios,
     overrides: {
       uploadFilters: { validateEmail: true },
@@ -128,7 +132,6 @@ export const testDatasets = [
     },
     aggregator: 'UBER EATS',
     menuType: 'Delivery',
-    traceability: { cpBase: 13 },
     enabledScenarios: implementedScenarios,
     overrides: {
       downloadTemplate: {
@@ -149,7 +152,6 @@ export const testDatasets = [
     },
     aggregator: 'UBER EATS',
     menuType: 'Delivery',
-    traceability: { cpBase: 25 },
     enabledScenarios: implementedScenarios,
   },
   {
@@ -164,10 +166,11 @@ export const testDatasets = [
     },
     aggregator: 'UBER EATS',
     menuType: 'Delivery Codisys',
-    traceability: { cpBase: 37 },
     enabledScenarios: implementedScenarios,
   },
 ] as const satisfies readonly TestDataset[];
+
+export const testDatasets = configuredTestDatasets;
 
 validateDatasets(testDatasets);
 
@@ -188,17 +191,19 @@ export function isScenarioEnabled(dataset: TestDataset, scenario: ScenarioId): b
 }
 
 export function resolveCaseId(dataset: TestDataset, scenario: ScenarioId): CaseId {
-  const override = dataset.traceability.cpOverrides?.[scenario];
+  const brand = getBrand(dataset.brandId);
+  const override = brand.traceability.cpOverrides?.[scenario];
   if (override) return override;
   const scenarioNumber = scenarioIds.indexOf(scenario) + 1;
   if (scenarioNumber <= 0) throw new Error(`No existe el escenario ${scenario}.`);
-  return `CP${dataset.traceability.cpBase + scenarioNumber - 1}`;
+  return `CP${brand.traceability.cpBase + scenarioNumber - 1}`;
 }
 
 export function validateDatasets(datasets: readonly TestDataset[]): void {
   const ids = new Set<string>();
   const combinations = new Set<string>();
-  const assignedCases = new Map<CaseId, string>();
+  const assignedCases = new Map<CaseId, { brandId: BrandId; scenario: ScenarioId }>();
+  validateBrandProfiles();
 
   for (const [brandId, brand] of Object.entries(brandProfiles)) {
     requireText(brand.label, `${brandId}: label de marca`);
@@ -228,9 +233,6 @@ export function validateDatasets(datasets: readonly TestDataset[]): void {
 
     if (!dataset.branch.label.includes(dataset.branch.code)) {
       throw new Error(`${dataset.id}: branch.label debe contener el codigo ${dataset.branch.code}.`);
-    }
-    if (!Number.isInteger(dataset.traceability.cpBase) || dataset.traceability.cpBase <= 0) {
-      throw new Error(`${dataset.id}: cpBase debe ser un entero positivo.`);
     }
     if (dataset.enabledScenarios.length === 0) {
       throw new Error(`${dataset.id}: habilita al menos un escenario.`);
@@ -265,15 +267,17 @@ export function validateDatasets(datasets: readonly TestDataset[]): void {
         throw new Error(`${dataset.id}/${scenario}: el CP ${cp} no es valido.`);
       }
       const owner = assignedCases.get(cp);
-      if (owner) throw new Error(`${dataset.id}/${scenario}: ${cp} ya pertenece a ${owner}.`);
-      assignedCases.set(cp, `${dataset.id}/${scenario}`);
+      if (owner) {
+        if (owner.brandId !== dataset.brandId || owner.scenario !== scenario) {
+          throw new Error(
+            `${dataset.id}/${scenario}: ${cp} ya pertenece a ${owner.brandId}/${owner.scenario}.`,
+          );
+        }
+      } else {
+        assignedCases.set(cp, { brandId: dataset.brandId, scenario });
+      }
     }
 
-    validateObjectKeys(
-      dataset.traceability.cpOverrides,
-      scenarioIds,
-      `${dataset.id}: traceability.cpOverrides`,
-    );
     validateObjectKeys(
       dataset.overrides,
       ['downloadTemplate', 'uploadFilters'],
@@ -303,6 +307,43 @@ export function validateDatasets(datasets: readonly TestDataset[]): void {
     if (date && !isValidDate(date)) {
       throw new Error(`${dataset.id}: la fecha ${date} debe ser valida y usar DD/MM/YYYY.`);
     }
+  }
+}
+
+export function suggestNextBrandCpBase(): number {
+  const lastEnd = Object.values(brandProfiles).reduce((max, brand) => {
+    const end = brand.traceability.cpBase + scenarioIds.length - 1;
+    return Math.max(max, end);
+  }, 0);
+  return lastEnd + 1;
+}
+
+function validateBrandProfiles(): void {
+  const ranges: Array<{ brandId: string; start: number; end: number }> = [];
+
+  for (const [brandId, brand] of Object.entries(brandProfiles)) {
+    const traceability = brand.traceability as BrandProfile['traceability'];
+    const { cpBase } = traceability;
+    if (!Number.isInteger(cpBase) || cpBase <= 0) {
+      throw new Error(`${brandId}: traceability.cpBase debe ser un entero positivo.`);
+    }
+    validateObjectKeys(
+      traceability.cpOverrides,
+      scenarioIds,
+      `${brandId}: traceability.cpOverrides`,
+    );
+
+    const start = cpBase;
+    const end = cpBase + scenarioIds.length - 1;
+    for (const range of ranges) {
+      const overlaps = start <= range.end && end >= range.start;
+      if (overlaps) {
+        throw new Error(
+          `${brandId}: el rango CP${start}-CP${end} se solapa con ${range.brandId} CP${range.start}-CP${range.end}.`,
+        );
+      }
+    }
+    ranges.push({ brandId, start, end });
   }
 }
 

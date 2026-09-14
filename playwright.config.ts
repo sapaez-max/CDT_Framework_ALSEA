@@ -12,6 +12,7 @@ import {
   chainedReorderGroupsAndModifiersTestPattern,
   chainedUpdateExistingMenuTestPattern,
   chainedPreserveOrderTestPattern,
+  chainedMultipleGroupsTestPattern,
   getRoleProjectConfigs,
 } from './src/config/roles';
 
@@ -135,6 +136,15 @@ export default defineConfig({
     {
       name: 'ordenamiento-conservar-orden',
       testMatch: chainedPreserveOrderTestPattern,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: env.authEnabled ? env.authStatePath : undefined,
+      },
+      metadata: { roleName: env.authRole },
+    },
+    {
+      name: 'ordenamiento-multiples-grupos',
+      testMatch: chainedMultipleGroupsTestPattern,
       use: {
         ...devices['Desktop Chrome'],
         storageState: env.authEnabled ? env.authStatePath : undefined,

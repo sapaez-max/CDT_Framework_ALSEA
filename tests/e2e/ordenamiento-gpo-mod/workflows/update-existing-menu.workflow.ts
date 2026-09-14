@@ -14,13 +14,13 @@ import { buildModificationEvidenceHtml } from '@src/reporting/modification-evide
 import { formatExecutionTimestamp } from '@src/utils/execution-timestamp';
 import type { PreserveOrderResult } from '@src/utils/group-reorder-template';
 import {
-  buildExpectedMenuSnapshot,
+  buildExpectedMenuSnapshotFromTemplate,
   compareMenuSnapshots,
   parseMenuSnapshot,
   type MenuSnapshot,
   type MenuSnapshotComparison,
 } from '@src/utils/menu-update-snapshot';
-import type { PreserveOrderCase, UpdateExistingMenuCase } from '../data/cases.data';
+import type { MultipleGroupsCase, PreserveOrderCase, UpdateExistingMenuCase } from '../data/cases.data';
 import { ExcelService } from '../services/excel.service';
 import { GmailService } from '../services/gmail.service';
 import { attachGmailEvidence } from '../support/email-report';
@@ -57,15 +57,24 @@ export async function preserveOrderWorkflow(
   return existingMenuWorkflow(page, caseData, testInfo, gmailClient, 'preserve-order');
 }
 
-async function existingMenuWorkflow(
+export async function multipleGroupsWorkflow(
   page: Page,
-  caseData: UpdateExistingMenuCase | PreserveOrderCase,
+  caseData: MultipleGroupsCase,
   testInfo: TestInfo,
   gmailClient: GmailClient,
-  mode: 'selective-update' | 'preserve-order',
+): Promise<ExecutionContext> {
+  return existingMenuWorkflow(page, caseData, testInfo, gmailClient, 'multiple-groups');
+}
+
+async function existingMenuWorkflow(
+  page: Page,
+  caseData: UpdateExistingMenuCase | PreserveOrderCase | MultipleGroupsCase,
+  testInfo: TestInfo,
+  gmailClient: GmailClient,
+  mode: 'selective-update' | 'preserve-order' | 'multiple-groups',
 ): Promise<ExecutionContext> {
   const context = createExecutionContext(caseData);
-  const executionTimestamp = formatExecutionTimestamp();
+  const executionTimestamp = process.env.ALSEA_EXECUTION_TIMESTAMP ?? formatExecutionTimestamp();
   const executionIdentifier = `AUTO_${caseData.id}_${executionTimestamp}`;
   annotateExecutionContext(testInfo, context, {
     ...caseData,
@@ -76,9 +85,17 @@ async function existingMenuWorkflow(
   const excel = new ExcelService();
   const aggregatorColumn = normalizeAggregatorColumn(caseData.aggregator);
   const preservesOrder = mode === 'preserve-order';
+  const validatesMultipleGroups = mode === 'multiple-groups';
   const sourceState = await test.step(
     'Identificar la plantilla del menu existente sin modificarla',
-    () => preservesOrder
+    () => validatesMultipleGroups
+      ? excel.inspectMultipleGroupsExistingMenu(
+        caseData.id,
+        caseData.sourceCaseId,
+        aggregatorColumn,
+        artifactScope(context),
+      )
+      : preservesOrder
       ? excel.inspectCompleteExistingMenu(
         caseData.id,
         caseData.sourceCaseId,
@@ -108,14 +125,15 @@ async function existingMenuWorkflow(
   const beforeJson = await test.step('Capturar y validar el estado inicial del menu en Visor CORE', async () => {
     await visor.open();
     await visor.applyFilters(caseData);
-    await visor.validateReorderedGroups(sourceState.expectation, { validateDuplicates: true });
-    return visor.openCurrentProductJson();
+    return visor.openReorderedProductJson(sourceState.expectation);
   });
   const baselineSnapshot = parseMenuSnapshot(beforeJson);
 
   const edited = await test.step(
     preservesOrder
       ? 'Crear una copia, conservar el orden y cambiar el nombre del producto'
+      : validatesMultipleGroups
+        ? 'Crear una copia y reordenar multiples grupos y modificadores'
       : 'Crear una copia y modificar selectivamente el menu existente',
     () => preservesOrder
       ? excel.reloadPreservingOrder(
@@ -125,6 +143,13 @@ async function existingMenuWorkflow(
         artifactScope(context),
         executionIdentifier,
       )
+      : validatesMultipleGroups
+        ? excel.reorderMultipleGroups(
+          caseData.id,
+          caseData.sourceCaseId,
+          aggregatorColumn,
+          artifactScope(context),
+        )
       : excel.updateExistingMenu(
         caseData.id,
         caseData.sourceCaseId,
@@ -222,9 +247,11 @@ async function existingMenuWorkflow(
     contentType: excelContentType(edited.outputPath),
   });
 
-  const expectedSnapshot = buildExpectedMenuSnapshot(baselineSnapshot, edited.changes, {
-    itemName: expectation.itemName,
-  });
+  const expectedSnapshot = validatesMultipleGroups
+    ? undefined
+    : buildExpectedMenuSnapshotFromTemplate(baselineSnapshot, expectation, {
+      itemName: expectation.itemName,
+    });
 
   await goToLanding(page);
   await new LoginPage(page).expectAuthenticated();
@@ -283,6 +310,27 @@ async function existingMenuWorkflow(
     await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
     throwIfMenuLoadFailed(loadResult);
   });
+
+  if (validatesMultipleGroups) {
+    await test.step('Esperar y validar visualmente multiples grupos en Visor CORE', async () => {
+      await expect(async () => {
+        await goToLanding(page);
+        await new LoginPage(page).expectAuthenticated();
+        await visor.open();
+        await visor.applyFilters(caseData);
+        await visor.validateReorderedGroups(expectation, { validateDuplicates: true });
+      }).toPass({
+        timeout: env.visorPropagationTimeoutMs,
+        intervals: [2_000, 5_000, 10_000, 20_000],
+      });
+    });
+
+    expect(edited.outputPath, 'La plantilla actualizada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+    return context;
+  }
+  if (!expectedSnapshot) {
+    throw new Error(`${caseData.id} requiere una expectativa JSON para comparar el menu actualizado.`);
+  }
 
   let afterJson = '';
   let actualSnapshot: MenuSnapshot | undefined;

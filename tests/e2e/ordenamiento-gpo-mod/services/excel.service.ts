@@ -65,6 +65,22 @@ export class ExcelService {
     };
   }
 
+  inspectMultipleGroupsExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    const sourcePath = getExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    return {
+      sourcePath,
+      expectation: readGroupsAndModifiersExpectation(sourcePath, aggregator, {
+        minimumGroups: 4,
+        minimumModifiersPerGroup: 2,
+        requireUniqueModifierOrders: false,
+      }),
+    };
+  }
+
   updateExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
     const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
       previousCase: sourceCaseId,
@@ -78,6 +94,22 @@ export class ExcelService {
       artifactScope: scope,
       sourceCopy,
       strategy: 'selective-update',
+    });
+  }
+
+  reorderMultipleGroups(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
+    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
+      previousCase: sourceCaseId,
+      currentCase: caseId,
+      scope,
+    });
+    return reorderGroupsAndModifiers({
+      caseId,
+      sourceCaseId,
+      aggregator,
+      artifactScope: scope,
+      sourceCopy,
+      strategy: 'multiple-groups',
     });
   }
 

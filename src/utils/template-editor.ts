@@ -95,7 +95,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     modifierAggregatorColumn,
     request.aggregator,
   );
-  const executionTimestamp = formatExecutionTimestamp(new Date());
+  const executionTimestamp = process.env.ALSEA_EXECUTION_TIMESTAMP ?? formatExecutionTimestamp(new Date());
   const marker = `${request.caseId}_${executionTimestamp}`;
   const changes: CellChange[] = [];
   const unchangedCells = [

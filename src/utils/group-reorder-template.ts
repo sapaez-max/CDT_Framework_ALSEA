@@ -13,7 +13,7 @@ export type GroupReorderRequest = {
   aggregator: string;
   artifactScope: ArtifactScope;
   sourceCopy?: CaseExcelCopy;
-  strategy?: 'complete' | 'selective-update';
+  strategy?: 'complete' | 'selective-update' | 'multiple-groups';
 };
 
 export type ReorderedGroupExpectation = {
@@ -452,6 +452,8 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
     modifierAggregatorColumn,
     aggregator: request.aggregator,
     minimumModifiersPerGroup: 2,
+    minimumGroups: request.strategy === 'multiple-groups' ? 4 : 3,
+    requireUniqueModifierOrders: request.strategy !== 'multiple-groups',
   });
 
   const orderedGroups = [...selection.groupRows].sort((left, right) => left.order - right.order);
@@ -459,8 +461,8 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
   const changes: ReorderChange[] = [];
 
   orderedGroups.forEach((group, index) => {
-    const newOrder = reorderedGroupOrders[index];
-    if (request.strategy === 'selective-update' && newOrder === group.order) return;
+    const newOrder = expectedGroupOrder(request.strategy, group, index, orderedGroups.length, reorderedGroupOrders);
+    if (newOrder === group.order) return;
     changes.push(writeCell(groups, group.row, groupOrderColumn, newOrder, {
       entityType: 'modifierGroup',
       entityId: group.id,
@@ -485,8 +487,13 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
   for (const [groupIndex, group] of orderedGroups.entries()) {
     const reorderedModifierOrders = group.modifiers.map(modifier => modifier.order).reverse();
     const expectedModifiers = group.modifiers.map((modifier, index) => {
-      const shouldModify = request.strategy !== 'selective-update'
-        || (groupIndex === 0 && (index === 0 || index === group.modifiers.length - 1));
+      const shouldModify = shouldModifyModifier(
+        request.strategy,
+        groupIndex,
+        orderedGroups.length,
+        index,
+        group.modifiers.length,
+      );
       const expectedOrder = shouldModify ? reorderedModifierOrders[index] : modifier.order;
       const row = modifierRowById.get(`${group.id}::${modifier.id}`);
       if (row === undefined) {
@@ -516,10 +523,17 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
   const savedModifiers = requiredTable(saved, 'Modificadores');
   const expectationGroups = orderedGroups
     .map((group, index) => {
+      const expectedOrder = expectedGroupOrder(
+        request.strategy,
+        group,
+        index,
+        orderedGroups.length,
+        reorderedGroupOrders,
+      );
       const savedGroupOrder = Number(savedGroups.rows[group.row][groupOrderColumn]);
-      if (savedGroupOrder !== reorderedGroupOrders[index]) {
+      if (savedGroupOrder !== expectedOrder) {
         throw new Error(
-          `No se guardo el nuevo orden del grupo ${group.id}. Esperado: ${reorderedGroupOrders[index]}. Actual: ${savedGroupOrder}.`,
+          `No se guardo el nuevo orden del grupo ${group.id}. Esperado: ${expectedOrder}. Actual: ${savedGroupOrder}.`,
         );
       }
 
@@ -538,7 +552,7 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
         id: group.id,
         name: group.name,
         previousOrder: group.order,
-        expectedOrder: reorderedGroupOrders[index],
+        expectedOrder,
         modifiers: expectedModifiers,
       };
     })
@@ -564,7 +578,9 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
 export type GroupExpectationReadOptions = {
   itemId?: string;
   includeAllGroups?: boolean;
+  minimumGroups?: number;
   minimumModifiersPerGroup?: number;
+  requireUniqueModifierOrders?: boolean;
   excludeAutomatedModifiers?: boolean;
 };
 
@@ -624,7 +640,9 @@ export function readGroupsAndModifiersExpectation(
       : undefined,
     subgroupNameByCode,
     aggregator,
+    minimumGroups: options.minimumGroups,
     minimumModifiersPerGroup: options.minimumModifiersPerGroup ?? 2,
+    requireUniqueModifierOrders: options.requireUniqueModifierOrders,
     preferredItemId: options.itemId,
     includeAllGroups: options.includeAllGroups,
     excludeAutomatedModifiers: options.excludeAutomatedModifiers ?? true,
@@ -672,7 +690,9 @@ function selectItemWithThreeGroups(input: {
   modifierSubgroupsColumn?: number;
   subgroupNameByCode?: ReadonlyMap<string, string>;
   aggregator: string;
+  minimumGroups?: number;
   minimumModifiersPerGroup?: number;
+  requireUniqueModifierOrders?: boolean;
   preferredItemId?: string;
   includeAllGroups?: boolean;
   excludeAutomatedModifiers?: boolean;
@@ -752,7 +772,11 @@ function selectItemWithThreeGroups(input: {
       })
       .filter(group =>
         group.modifiers.length >= minimumModifiersPerGroup
-        && (input.includeAllGroups || hasUniqueModifierOrders(group.modifiers))
+        && (
+          input.requireUniqueModifierOrders === false
+          || input.includeAllGroups
+          || hasUniqueModifierOrders(group.modifiers)
+        )
         && (input.excludeAutomatedModifiers === false
           || !group.modifiers.some(modifier => modifier.name.startsWith('AUTO_'))))
       .sort((left, right) => left.order - right.order);
@@ -778,19 +802,47 @@ function selectItemWithThreeGroups(input: {
       ? visualGroups
       : visuallyStableGroups.length >= 3 ? visuallyStableGroups : visualGroups;
 
-    if (selectedGroups.length >= 3) {
+    const minimumGroups = input.minimumGroups ?? 3;
+    if (selectedGroups.length >= minimumGroups) {
       return {
         itemId,
         itemRow,
         categoryName,
-        groupRows: input.includeAllGroups ? selectedGroups : selectedGroups.slice(0, 3),
+        groupRows: input.includeAllGroups ? selectedGroups : selectedGroups.slice(0, minimumGroups),
       };
     }
   }
 
   throw new Error(
-    `No se encontro un item con categoria no vacia, al menos 3 grupos modificadores y al menos un modificador por grupo habilitados para ${input.aggregator}.`,
+    `No se encontro un item con categoria no vacia, al menos ${input.minimumGroups ?? 3} grupos modificadores y al menos ${input.minimumModifiersPerGroup ?? 1} modificador(es) por grupo habilitados para ${input.aggregator}.`,
   );
+}
+
+function expectedGroupOrder(
+  strategy: GroupReorderRequest['strategy'],
+  group: { order: number },
+  index: number,
+  totalGroups: number,
+  reorderedGroupOrders: number[],
+): number {
+  if (strategy !== 'multiple-groups') return reorderedGroupOrders[index];
+  return index === 0 || index === totalGroups - 1 ? reorderedGroupOrders[index] : group.order;
+}
+
+function shouldModifyModifier(
+  strategy: GroupReorderRequest['strategy'],
+  groupIndex: number,
+  totalGroups: number,
+  modifierIndex: number,
+  totalModifiers: number,
+): boolean {
+  if (strategy !== 'multiple-groups') {
+    return strategy !== 'selective-update'
+      || (groupIndex === 0 && (modifierIndex === 0 || modifierIndex === totalModifiers - 1));
+  }
+
+  return (groupIndex === 0 || groupIndex === totalGroups - 1)
+    && (modifierIndex === 0 || modifierIndex === totalModifiers - 1);
 }
 
 function requiredTable(workbook: WorkBook, expectedName: string): SheetTable {
