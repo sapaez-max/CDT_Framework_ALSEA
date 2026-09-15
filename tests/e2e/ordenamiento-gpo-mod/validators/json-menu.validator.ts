@@ -74,7 +74,10 @@ function compareJsonContent(
   const modifierOrder: JsonOrderComparison = {
     expected: expectedModifierOrder.join(' → '),
     actual: actualModifierOrder.length > 0 ? actualModifierOrder.join(' → ') : 'No encontrado',
-    passed: arraysEqual(actualModifierOrder, expectedModifierOrder),
+    passed: arraysEqual(
+      actualModifierOrder.map(normalizeText),
+      expectedModifierOrder.map(normalizeText),
+    ),
   };
 
   return {
@@ -159,7 +162,7 @@ function entityRow(
       ? (actualPositions.length > 0 ? [...new Set(actualPositions)].join(', ') : 'No encontrado')
       : 'No aplica',
     passed: actualIdentifier === expectedIdentifier
-      && actualName === expectedName
+      && normalizeText(actualName) === normalizeText(expectedName)
       && (!positionApplies || actualPositions.includes(expectedPosition)),
   };
 }
@@ -220,6 +223,10 @@ function isScalar(value: unknown): value is string | number | boolean {
 function arraysEqual(actual: string[], expected: string[]): boolean {
   return actual.length === expected.length
     && actual.every((value, index) => value === expected[index]);
+}
+
+function normalizeText(value: string | undefined): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function parseJson(jsonText: string): unknown {

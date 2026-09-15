@@ -1,5 +1,6 @@
 import { readCoreViewerExpectation } from '@utils/core-viewer-template';
 import {
+  caseDownloadDirectory,
   copyExcelFromCurrentCaseOrPrevious,
   copyExcelFromPreviousCase,
   getLatestExcelForCase,
@@ -21,6 +22,20 @@ export class ExcelService {
 
   referenceFromCase(fromCase: string, _scope: ArtifactScope) {
     return { sourcePath: getLatestExcelForCase(fromCase, _scope) };
+  }
+
+  referenceForCase(caseId: string, sourceCaseId: string, scope: ArtifactScope) {
+    try {
+      return { sourcePath: getLatestExcelForCase(sourceCaseId, scope) };
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+
+      const directory = caseDownloadDirectory(sourceCaseId, scope);
+      throw new Error(
+        `${caseId} requiere el artefacto Excel generado por ${sourceCaseId} para el dataset ${scope.datasetId}. Ruta buscada: ${directory}.`,
+        { cause: error },
+      );
+    }
   }
 
   editTemplate(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {

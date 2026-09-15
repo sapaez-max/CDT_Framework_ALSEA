@@ -57,6 +57,7 @@ export function artifactScope(context: ExecutionContext): ArtifactScope {
 }
 
 type FunctionalAnnotationData = CaseMetadata & Partial<{
+  sourceCaseId: string;
   downloadDate: string;
   loadType: string | string[];
   versionMenu: string | string[];
@@ -83,6 +84,7 @@ export function annotateExecutionContext(
     addFunctionalAnnotation(testInfo, 'Agregador', context.aggregator);
   }
   addFunctionalAnnotation(testInfo, 'Tipo de menu', context.menuType);
+  addFunctionalAnnotation(testInfo, 'Source CP Excel', caseData.sourceCaseId);
   addFunctionalAnnotation(testInfo, 'Fecha seleccionada', caseData.downloadDate);
   addFunctionalAnnotation(testInfo, 'Tipo de carga', firstValue(caseData.loadType));
   addFunctionalAnnotation(testInfo, 'Versionar menu', firstValue(caseData.versionMenu));

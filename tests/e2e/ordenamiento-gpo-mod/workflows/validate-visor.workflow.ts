@@ -30,7 +30,7 @@ export async function validateVisorWorkflow(
   const excel = new ExcelService();
   const prepared = await test.step(
     `Referenciar plantilla generada por ${caseData.sourceCaseId}`,
-    () => excel.referenceFromCase(caseData.sourceCaseId, artifactScope(context)),
+    () => excel.referenceForCase(caseData.id, caseData.sourceCaseId, artifactScope(context)),
   );
   const expectation = await test.step(
     'Leer item, grupo y modificadores que deben validarse',

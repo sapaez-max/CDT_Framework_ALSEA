@@ -37,7 +37,8 @@ export async function uploadMenuWorkflow(
 
   const prepared = await test.step(
     `Referenciar plantilla generada por ${caseData.sourceCaseId}`,
-    () => new ExcelService().referenceFromCase(
+    () => new ExcelService().referenceForCase(
+      caseData.id,
       caseData.sourceCaseId,
       artifactScope(context),
     ),

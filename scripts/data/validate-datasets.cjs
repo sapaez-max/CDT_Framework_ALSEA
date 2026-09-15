@@ -42,6 +42,19 @@ function loadDatasets() {
   return require(modulePath);
 }
 
+function loadExcelArtifactDependencies() {
+  registerTypeScriptLoader();
+  const modulePath = path.resolve(
+    'tests',
+    'e2e',
+    'ordenamiento-gpo-mod',
+    'data',
+    'excel-artifact-dependencies.ts',
+  );
+  delete require.cache[modulePath];
+  return require(modulePath);
+}
+
 function validateConfiguredDatasets() {
   const {
     brandProfiles,
@@ -51,15 +64,29 @@ function validateConfiguredDatasets() {
     testDatasets,
     resolveCaseId,
   } = loadDatasets();
+  const {
+    excelArtifactDependencies,
+    resolveExcelSourceCaseId,
+  } = loadExcelArtifactDependencies();
   const enabled = testDatasets.filter(dataset => dataset.enabled);
   const cases = enabled.flatMap(dataset =>
     dataset.enabledScenarios.map(scenario => resolveCaseId(dataset, scenario)));
+  const artifactSources = enabled.flatMap(dataset =>
+    dataset.enabledScenarios
+      .filter(scenario => excelArtifactDependencies[scenario].sourceScenario)
+      .map(scenario => ({
+        dataset: dataset.id,
+        scenario,
+        caseId: resolveCaseId(dataset, scenario),
+        sourceCaseId: resolveExcelSourceCaseId(dataset, scenario),
+      })));
 
   console.log(`Datasets validos: ${testDatasets.length}`);
   console.log(`Datasets habilitados: ${enabled.length}`);
   console.log(`Casos habilitados: ${cases.length}`);
   console.log(`Escenarios definidos: ${scenarioIds.length}`);
   console.log(`Rangos de marca validados: ${Object.keys(brandProfiles).length}`);
+  console.log(`Dependencias Excel validadas: ${artifactSources.length}`);
   return {
     brandProfiles,
     getBrand,
@@ -67,6 +94,8 @@ function validateConfiguredDatasets() {
     suggestNextBrandCpBase,
     testDatasets,
     resolveCaseId,
+    excelArtifactDependencies,
+    resolveExcelSourceCaseId,
   };
 }
 

@@ -5,6 +5,9 @@ import type {
 } from '@pages/menu/MenuAdministrationPage';
 import type { EmailBodyExpectation } from '@src/integrations/google/gmail-client';
 import {
+  resolveExcelSourceCaseId,
+} from './excel-artifact-dependencies';
+import {
   getBrand,
   isScenarioEnabled,
   resolveCaseId,
@@ -121,7 +124,6 @@ export type MultipleGroupsCase = ReorderCaseBase & {
 type ScenarioDefinition = {
   number: number;
   title: string;
-  sourceScenario?: ScenarioId;
 };
 
 const scenarioDefinitions = {
@@ -132,57 +134,46 @@ const scenarioDefinitions = {
   editTemplate: {
     number: 2,
     title: 'Edicion de plantilla de grupos modificadores y modificadores',
-    sourceScenario: 'downloadTemplate',
   },
   uploadFilters: {
     number: 3,
     title: 'Cargar filtros para un nuevo menu',
-    sourceScenario: 'editTemplate',
   },
   uploadMenu: {
     number: 4,
     title: 'Carga exitosa de un nuevo menu',
-    sourceScenario: 'uploadFilters',
   },
   validateVisor: {
     number: 5,
     title: 'Validacion en Visor CORE',
-    sourceScenario: 'uploadMenu',
   },
   validateJson: {
     number: 6,
     title: 'Validacion del JSON',
-    sourceScenario: 'validateVisor',
   },
   reorderGroups: {
     number: 7,
     title: 'Ordenamiento de grupos modificadores',
-    sourceScenario: 'downloadTemplate',
   },
   reorderModifiers: {
     number: 8,
     title: 'Ordenamiento de modificadores',
-    sourceScenario: 'downloadTemplate',
   },
   reorderGroupsAndModifiers: {
     number: 9,
     title: 'Ordenamiento de grupos y modificadores',
-    sourceScenario: 'downloadTemplate',
   },
   updateExistingMenu: {
     number: 10,
     title: 'Modificacion de un menu existente',
-    sourceScenario: 'reorderGroupsAndModifiers',
   },
   preserveOrder: {
     number: 11,
     title: 'Conservacion del orden configurado',
-    sourceScenario: 'updateExistingMenu',
   },
   multipleGroups: {
     number: 12,
     title: 'Validacion de multiples grupos modificadores',
-    sourceScenario: 'preserveOrder',
   },
 } as const satisfies Record<ScenarioId, ScenarioDefinition>;
 
@@ -426,10 +417,7 @@ function metadata(dataset: TestDataset, scenario: ScenarioId): CaseMetadata {
 }
 
 function sourceCaseId(dataset: TestDataset, scenario: ScenarioId): CaseId {
-  const definition: ScenarioDefinition = scenarioDefinitions[scenario];
-  const sourceScenario = definition.sourceScenario;
-  if (!sourceScenario) throw new Error(`${scenario} no tiene un escenario de origen.`);
-  return resolveCaseId(dataset, sourceScenario);
+  return resolveExcelSourceCaseId(dataset, scenario);
 }
 
 function buildViewerCase(

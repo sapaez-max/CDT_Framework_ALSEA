@@ -1,6 +1,6 @@
 ﻿import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 function numberFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];

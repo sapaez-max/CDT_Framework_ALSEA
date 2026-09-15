@@ -30,7 +30,7 @@ export async function validateJsonWorkflow(
   const excel = new ExcelService();
   const prepared = await test.step(
     `Referenciar plantilla validada por ${caseData.sourceCaseId}`,
-    () => excel.referenceFromCase(caseData.sourceCaseId, artifactScope(context)),
+    () => excel.referenceForCase(caseData.id, caseData.sourceCaseId, artifactScope(context)),
   );
   const expectation = await test.step(
     'Leer item, grupo, modificadores y ordenes esperados',
