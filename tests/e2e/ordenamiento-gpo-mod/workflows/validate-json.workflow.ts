@@ -44,8 +44,8 @@ export async function validateJsonWorkflow(
   };
   context.category = { name: expectation.categoryName };
   context.groupModifier = {
-    id: expectation.groupId,
-    nameAfter: expectation.groupName,
+    id: expectation.resolvedGroupId,
+    nameAfter: expectation.resolvedGroupName,
     descriptionAfter: expectation.groupDescription,
   };
   context.modifiers = expectation.modifiers.map(modifier => ({

@@ -10,6 +10,10 @@ import {
   chooseRotatingItem,
   recordItemSelection,
 } from './item-selection-history';
+import {
+  resolveModifierGroupRelations,
+  selectEditableRelation,
+} from './modifier-group-relations';
 
 export type TemplateEditRequest = {
   caseId: string;
@@ -34,6 +38,8 @@ export type TemplateEditResult = {
   itemName: string;
   categoryName: string;
   groupId: string;
+  subgroupId: string | null;
+  resolvedGroupId: string;
   modifierIds: string[];
   changes: CellChange[];
 };
@@ -51,7 +57,6 @@ type SheetTable = {
   headers: unknown[];
 };
 
-const requiredSheets = ['Items', 'Categorias', 'GrupoModificador', 'Modificadores'] as const;
 
 export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEditResult {
   const { sourcePath, targetPath: inputPath } = copyExcelFromPreviousCase({
@@ -69,6 +74,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const categories = requiredTable(workbook, 'Categorias');
   const groups = requiredTable(workbook, 'GrupoModificador');
   const modifiers = requiredTable(workbook, 'Modificadores');
+  const subgroups = requiredTable(workbook, 'Subgrupos');
   ensureTablesHaveData([items, categories, groups, modifiers], inputPath);
 
   const itemColumn = requiredColumn(items, ['Item']);
@@ -76,12 +82,17 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const categoryItemColumn = requiredColumn(categories, ['Item']);
   const categoryNameColumn = requiredColumn(categories, ['Categoria', 'Nombre Categoria']);
   const groupIdColumn = requiredColumn(groups, ['Grupo Modificador']);
+  const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
+  const groupOrderColumn = requiredColumn(groups, ['Orden', 'Posicion']);
   const modifierItemColumn = requiredColumn(modifiers, ['Item']);
   const modifierGroupColumn = requiredColumn(modifiers, ['Grupo Modificador']);
   const modifierIdColumn = requiredColumn(modifiers, ['Modificador']);
-  const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
+  const modifierSubgroupsColumn = requiredColumn(modifiers, ['Subgrupos']);
   const groupDescriptionColumn = requiredColumn(groups, ['Descripcion']);
   const modifierNameColumn = requiredColumn(modifiers, ['Nombre Comercial Modificador']);
+  const modifierOrderColumn = requiredColumn(modifiers, ['Orden', 'Posicion']);
+  const subgroupCodeColumn = requiredColumn(subgroups, ['Subgrupo']);
+  const subgroupNameColumn = requiredColumn(subgroups, ['Nombre Comercial']);
   const groupAggregatorColumn = requiredColumn(groups, [request.aggregator]);
   const modifierAggregatorColumn = requiredColumn(modifiers, [request.aggregator]);
 
@@ -95,8 +106,17 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     categoryItemColumn,
     categoryNameColumn,
     groupIdColumn,
+    groupNameColumn,
+    groupOrderColumn,
     modifierItemColumn,
     modifierGroupColumn,
+    modifierIdColumn,
+    modifierNameColumn,
+    modifierOrderColumn,
+    modifierSubgroupsColumn,
+    subgroupCodeColumn,
+    subgroupNameColumn,
+    subgroups,
     groupAggregatorColumn,
     modifierAggregatorColumn,
     request.aggregator,
@@ -150,6 +170,8 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]).trim(),
     categoryName: selection.categoryName,
     groupId: canonicalId(selection.groupId),
+    subgroupId: selection.subgroupId,
+    resolvedGroupId: selection.resolvedGroupId,
     modifierIds: selection.modifierRows.map(row => canonicalId(modifiers.rows[row][modifierIdColumn])),
     changes,
   };
@@ -211,8 +233,17 @@ function selectRelatedRows(
   categoryItemColumn: number,
   categoryNameColumn: number,
   groupIdColumn: number,
+  groupNameColumn: number,
+  groupOrderColumn: number,
   modifierItemColumn: number,
   modifierGroupColumn: number,
+  modifierIdColumn: number,
+  modifierNameColumn: number,
+  modifierOrderColumn: number,
+  modifierSubgroupsColumn: number,
+  subgroupCodeColumn: number,
+  subgroupNameColumn: number,
+  subgroups: SheetTable,
   groupAggregatorColumn: number,
   modifierAggregatorColumn: number,
   aggregator: string,
@@ -223,6 +254,8 @@ function selectRelatedRows(
   itemRow: number;
   categoryName: string;
   groupId: unknown;
+  subgroupId: string | null;
+  resolvedGroupId: string;
   groupRow: number;
   modifierRows: number[];
 } {
@@ -246,6 +279,8 @@ function selectRelatedRows(
     itemRow: number;
     categoryName: string;
     groupId: unknown;
+    subgroupId: string | null;
+    resolvedGroupId: string;
     groupRow: number;
     modifierRows: number[];
   }> = [];
@@ -266,15 +301,39 @@ function selectRelatedRows(
       const categoryName = categoryByItem.get(itemId);
       if (itemRow === undefined || !categoryName) continue;
 
-      const relatedModifierRows = modifiers.rows
-        .map((row, index) => ({ row, index }))
-        .filter(({ row, index }) =>
-          index > 0
-          && canonicalId(row[modifierGroupColumn]) === canonicalId(groupId)
-          && canonicalId(row[modifierItemColumn]) === itemId
-          && isEnabled(row[modifierAggregatorColumn]))
-        .map(({ index }) => index);
-      if (relatedModifierRows.length < 2) continue;
+      const relations = resolveModifierGroupRelations({
+        baseGroups: [{
+          id: canonicalId(groupId),
+          name: displayValue(groups.rows[groupRow][groupNameColumn]),
+          position: Number(groups.rows[groupRow][groupOrderColumn]),
+          source: { sheet: groups.name, row: groupRow + 1 },
+        }],
+        modifiers: modifiers.rows
+          .map((row, index) => ({ row, index }))
+          .filter(({ row, index }) =>
+            index > 0
+            && canonicalId(row[modifierGroupColumn]) === canonicalId(groupId)
+            && canonicalId(row[modifierItemColumn]) === itemId
+            && isEnabled(row[modifierAggregatorColumn]))
+          .map(({ row, index }) => ({
+            itemId,
+            baseGroupId: canonicalId(groupId),
+            id: canonicalId(row[modifierIdColumn]),
+            name: displayValue(row[modifierNameColumn]),
+            position: Number(row[modifierOrderColumn]),
+            rawSubgroups: row[modifierSubgroupsColumn],
+            source: { sheet: modifiers.name, row: index + 1 },
+          })),
+        subgroups: subgroups.rows.slice(1)
+          .map((row, index) => ({
+            id: canonicalId(row[subgroupCodeColumn]),
+            name: displayValue(row[subgroupNameColumn]),
+            source: { sheet: subgroups.name, row: index + 2 },
+          }))
+          .filter(subgroup => subgroup.id),
+      });
+      const relation = selectEditableRelation(relations);
+      if (!relation) continue;
 
       candidates.push({
         itemId,
@@ -282,15 +341,17 @@ function selectRelatedRows(
         itemRow,
         categoryName,
         groupId,
+        subgroupId: relation.identity.subgroupId,
+        resolvedGroupId: relation.resolvedGroup.id,
         groupRow,
-        modifierRows: relatedModifierRows.slice(0, 2),
+        modifierRows: relation.modifiers.slice(0, 2).map(modifier => modifier.source.row - 1),
       });
     }
   }
 
   if (candidates.length === 0) {
     throw new Error(
-      `No se encontro un item que exista en Items, tenga una Categoria no vacia y este relacionado con un grupo modificador y al menos dos modificadores habilitados para ${aggregator}.`,
+      `No se encontro un item que exista en Items, tenga una Categoria no vacia y este relacionado con un grupo modificador y al menos dos modificadores de la misma relacion Item + Grupo + Subgrupo habilitados para ${aggregator}.`,
     );
   }
 

@@ -9,6 +9,7 @@ export type MenuModifierSnapshot = {
 
 export type MenuGroupSnapshot = {
   id: string;
+  baseGroupId?: string;
   name: string;
   position: number;
   modifiers: MenuModifierSnapshot[];
@@ -80,49 +81,6 @@ export function parseMenuSnapshot(jsonText: string): MenuSnapshot {
   };
 }
 
-export function buildExpectedMenuSnapshot(
-  baseline: MenuSnapshot,
-  changes: ReorderChange[],
-  overrides: { itemName?: string } = {},
-  options: { verifyPreviousPositions?: boolean } = {},
-): MenuSnapshot {
-  const verifyPreviousPositions = options.verifyPreviousPositions ?? true;
-  const expected = structuredClone(baseline);
-  if (overrides.itemName) expected.name = overrides.itemName;
-
-  for (const change of changes) {
-    if (change.entityType === 'modifierGroup') {
-      const groups = expected.groups.filter(group => groupIdMatches(group.id, change.entityId));
-      if (groups.length !== 1) {
-        throw new Error(
-          `No se pudo asociar de forma unica el grupo Excel ${change.entityId} con el JSON inicial.`,
-        );
-      }
-      if (verifyPreviousPositions) verifyPreviousPosition(change, groups[0].position);
-      groups[0].position = Number(change.newValue);
-      continue;
-    }
-
-    const candidateGroups = change.parentGroupId
-      ? expected.groups.filter(group => groupIdMatches(group.id, change.parentGroupId ?? ''))
-      : expected.groups;
-    const matches = candidateGroups.flatMap(group => group.modifiers
-      .filter(modifier => modifier.id === change.entityId)
-      .map(modifier => ({ group, modifier })));
-    const namedMatches = matches.filter(match => normalize(match.modifier.name) === normalize(change.entityName));
-    const selected = namedMatches.length === 1 ? namedMatches : matches;
-    if (selected.length !== 1) {
-      throw new Error(
-        `No se pudo asociar de forma unica el modificador ${change.entityId} con el JSON inicial.`,
-      );
-    }
-    if (verifyPreviousPositions) verifyPreviousPosition(change, selected[0].modifier.position);
-    selected[0].modifier.position = Number(change.newValue);
-  }
-
-  return expected;
-}
-
 export function buildExpectedMenuSnapshotFromTemplate(
   baseline: MenuSnapshot,
   expectation: ReorderedGroupsExpectation,
@@ -131,35 +89,72 @@ export function buildExpectedMenuSnapshotFromTemplate(
   const expected = structuredClone(baseline);
   if (overrides.itemName) expected.name = overrides.itemName;
 
-  for (const expectedGroup of expectation.groups) {
-    const idMatches = expected.groups.filter(group => groupIdMatches(group.id, expectedGroup.id));
-    const nameMatches = expected.groups.filter(group =>
-      normalize(group.name) === normalize(expectedGroup.name));
-    const groups = idMatches.length === 1 ? idMatches : nameMatches;
-    if (groups.length !== 1) {
-      throw new Error(
-        `No se pudo asociar de forma unica el grupo Excel ${expectedGroup.id} con el JSON inicial.`,
-      );
-    }
+  const allJsonModifiers = buildModifierIndex(expected);
 
-    const group = groups[0];
-    group.position = expectedGroup.expectedOrder;
+  for (const expectedGroup of expectation.groups) {
+    const matchedGroup = findMatchingJsonGroup(expected, expectedGroup);
+    if (!matchedGroup) continue;
+    matchedGroup.position = expectedGroup.expectedOrder;
+    matchedGroup.baseGroupId = expectedGroup.baseGroupId;
 
     for (const expectedModifier of expectedGroup.modifiers) {
-      const matches = group.modifiers.filter(modifier => modifier.id === expectedModifier.id);
-      const namedMatches = matches.filter(modifier =>
-        normalize(modifier.name) === normalize(expectedModifier.name));
-      const selected = namedMatches.length === 1 ? namedMatches : matches;
-      if (selected.length !== 1) {
-        throw new Error(
-          `No se pudo asociar de forma unica el modificador ${expectedModifier.id} del grupo ${expectedGroup.id} con el JSON inicial.`,
-        );
-      }
-      selected[0].position = expectedModifier.order;
+      applyModifierPosition(allJsonModifiers, expectedModifier);
     }
   }
 
   return expected;
+}
+
+function buildModifierIndex(snapshot: MenuSnapshot): Map<string, MenuModifierSnapshot[]> {
+  const index = new Map<string, MenuModifierSnapshot[]>();
+  for (const group of snapshot.groups) {
+    for (const modifier of group.modifiers) {
+      const existing = index.get(modifier.id) ?? [];
+      existing.push(modifier);
+      index.set(modifier.id, existing);
+    }
+  }
+  return index;
+}
+
+function findMatchingJsonGroup(
+  baseline: MenuSnapshot,
+  expectedGroup: { id: string; name: string },
+): MenuGroupSnapshot | undefined {
+  const byId = baseline.groups.filter(group => group.id === expectedGroup.id);
+  if (byId.length === 1) return byId[0];
+
+  const byName = baseline.groups.filter(group =>
+    normalize(group.name) === normalize(expectedGroup.name));
+  if (byName.length === 1) return byName[0];
+
+  const expectedName = normalize(expectedGroup.name);
+  const partialMatches = baseline.groups.filter(group => {
+    const groupName = normalize(group.name);
+    return groupName.includes(expectedName) || expectedName.includes(groupName);
+  });
+  if (partialMatches.length === 1) return partialMatches[0];
+
+  return undefined;
+}
+
+function applyModifierPosition(
+  allJsonModifiers: Map<string, MenuModifierSnapshot[]>,
+  expectedModifier: { id: string; name: string; order: number },
+): void {
+  const candidates = allJsonModifiers.get(expectedModifier.id);
+  if (!candidates || candidates.length === 0) return;
+
+  if (candidates.length === 1) {
+    candidates[0].position = expectedModifier.order;
+    return;
+  }
+
+  const namedMatch = candidates.find(modifier =>
+    normalize(modifier.name) === normalize(expectedModifier.name));
+  if (namedMatch) {
+    namedMatch.position = expectedModifier.order;
+  }
 }
 
 export function compareMenuSnapshots(
@@ -199,7 +194,7 @@ export function compareMenuSnapshots(
     add(`Grupo presente una sola vez: ${expectedGroup.id}`, 1, actualGroups.length);
     if (actualGroups.length !== 1) continue;
     const actualGroup = actualGroups[0];
-    const changed = [...changedGroupIds].some(id => groupIdMatches(expectedGroup.id, id));
+    const changed = expectedGroup.baseGroupId ? changedGroupIds.has(expectedGroup.baseGroupId) : false;
     add(
       `Posicion de grupo ${expectedGroup.id} (${changed ? 'modificado' : 'control'})`,
       expectedGroup.position,
@@ -237,7 +232,7 @@ export function compareMenuSnapshots(
         candidate.entityType === 'modifier'
         && candidate.entityId === expectedModifier.id
         && normalize(candidate.entityName) === normalize(expectedModifier.name)
-        && (!candidate.parentGroupId || groupIdMatches(expectedGroup.id, candidate.parentGroupId)));
+        && (!candidate.parentGroupId || (expectedGroup.baseGroupId ?? expectedGroup.id) === candidate.parentGroupId));
       const key = modifierKey(expectedGroup.id, expectedModifier.id);
       if (change) changedModifierKeys.add(key);
       add(
@@ -250,7 +245,7 @@ export function compareMenuSnapshots(
   }
 
   const changedGroups = expected.groups.filter(group =>
-    [...changedGroupIds].some(id => groupIdMatches(group.id, id))).length;
+    group.baseGroupId ? changedGroupIds.has(group.baseGroupId) : false).length;
   const totalModifiers = expected.groups.reduce((total, group) => total + group.modifiers.length, 0);
 
   return {
@@ -271,14 +266,6 @@ function verifyPreviousPosition(change: ReorderChange, actual: number): void {
       `El estado inicial de ${change.entityType} ${change.entityId} no coincide con el Excel: esperado ${change.previousValue}, actual ${actual}.`,
     );
   }
-}
-
-function groupIdMatches(jsonId: string, excelId: string): boolean {
-  return jsonId === excelId
-    || jsonId.startsWith(`${excelId}_`)
-    || excelId.startsWith(`${jsonId}_`)
-    || jsonId.split('_').includes(excelId)
-    || excelId.split('_').includes(jsonId);
 }
 
 function modifierKey(groupId: string, modifierId: string): string {

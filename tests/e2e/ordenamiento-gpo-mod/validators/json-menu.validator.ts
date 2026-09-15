@@ -50,9 +50,8 @@ function compareJsonContent(
 
   const groupObject = findObjectByIdentifier(
     itemScope,
-    expectation.groupId,
+    expectation.resolvedGroupId,
     /^(modifierGroupId|groupModifierId|groupId|id)$/i,
-    true,
   );
   const groupScope = groupObject ? collectObjects(groupObject) : [];
 
@@ -90,8 +89,8 @@ function compareJsonContent(
       ),
       entityRow(
         'Grupo modificador',
-        expectation.groupId,
-        expectation.groupName,
+        expectation.resolvedGroupId,
+        expectation.resolvedGroupName,
         expectation.groupOrder,
         groupObject,
         /^(modifierGroupId|groupModifierId|groupId|id)$/i,
@@ -142,10 +141,9 @@ function entityRow(
   expectedPosition: number | undefined,
   object: Record<string, unknown> | undefined,
   identifierPattern: RegExp,
-  allowIdentifierSuffix = false,
 ): JsonComparisonRow {
   const actualIdentifier = scalarValue(object, identifierPattern)
-    ?? matchingScalarValue(object, expectedIdentifier, allowIdentifierSuffix);
+    ?? matchingScalarValue(object, expectedIdentifier);
   const actualName = scalarValue(object, /^(name|nombre|nombreComercial)$/i);
   const actualPositions = exposedOrders(object ? [object] : []);
   const positionApplies = expectedPosition !== undefined;
@@ -160,7 +158,7 @@ function entityRow(
     actualPosition: positionApplies
       ? (actualPositions.length > 0 ? [...new Set(actualPositions)].join(', ') : 'No encontrado')
       : 'No aplica',
-    passed: identifierMatches(actualIdentifier, expectedIdentifier, allowIdentifierSuffix)
+    passed: actualIdentifier === expectedIdentifier
       && actualName === expectedName
       && (!positionApplies || actualPositions.includes(expectedPosition)),
   };
@@ -191,34 +189,21 @@ function findObjectByIdentifier(
   objects: Record<string, unknown>[],
   expected: string,
   keyPattern: RegExp,
-  allowSuffix = false,
 ): Record<string, unknown> | undefined {
   const keyedMatch = objects.find(candidate => Object.entries(candidate).some(([key, value]) =>
-    keyPattern.test(key) && isScalar(value)
-      && identifierMatches(String(value), expected, allowSuffix)));
-  return keyedMatch ?? objects.find(candidate =>
-    matchingScalarValue(candidate, expected, allowSuffix) !== undefined);
+    keyPattern.test(key) && isScalar(value) && String(value) === expected));
+  return keyedMatch ?? objects.find(candidate => matchingScalarValue(candidate, expected) !== undefined);
 }
 
 function matchingScalarValue(
   object: Record<string, unknown> | undefined,
   expected: string,
-  allowSuffix = false,
 ): string | undefined {
   if (!object) return undefined;
-  const value = Object.values(object).find(candidate =>
-    isScalar(candidate) && identifierMatches(String(candidate), expected, allowSuffix));
+  const value = Object.values(object).find(candidate => isScalar(candidate) && String(candidate) === expected);
   return value === undefined ? undefined : String(value);
 }
 
-function identifierMatches(
-  actual: string | undefined,
-  expected: string,
-  allowSuffix: boolean,
-): boolean {
-  if (actual === undefined) return false;
-  return actual === expected || (allowSuffix && actual.startsWith(expected + '_'));
-}
 function scalarValue(
   object: Record<string, unknown> | undefined,
   keyPattern: RegExp,

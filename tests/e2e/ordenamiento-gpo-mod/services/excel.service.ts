@@ -2,7 +2,7 @@ import { readCoreViewerExpectation } from '@utils/core-viewer-template';
 import {
   copyExcelFromCurrentCaseOrPrevious,
   copyExcelFromPreviousCase,
-  getExcelFromCurrentCaseOrPrevious,
+  getLatestExcelForCase,
   type ArtifactScope,
 } from '@utils/case-artifact-manager';
 import {
@@ -36,11 +36,7 @@ export class ExcelService {
   }
 
   inspectExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
-    const sourcePath = getExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
+    const sourcePath = getLatestExcelForCase(sourceCaseId, scope);
     return {
       sourcePath,
       expectation: readGroupsAndModifiersExpectation(sourcePath, aggregator),
@@ -48,11 +44,7 @@ export class ExcelService {
   }
 
   inspectCompleteExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
-    const sourcePath = getExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
+    const sourcePath = getLatestExcelForCase(sourceCaseId, scope);
     const selected = readGroupsAndModifiersExpectation(sourcePath, aggregator);
     return {
       sourcePath,
@@ -66,11 +58,7 @@ export class ExcelService {
   }
 
   inspectMultipleGroupsExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
-    const sourcePath = getExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
+    const sourcePath = getLatestExcelForCase(sourceCaseId, scope);
     return {
       sourcePath,
       expectation: readGroupsAndModifiersExpectation(sourcePath, aggregator, {

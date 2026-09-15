@@ -1,4 +1,8 @@
 import xlsx, { type WorkBook, type WorkSheet } from 'xlsx';
+import {
+  resolveModifierGroupRelations,
+  selectEditableRelation,
+} from './modifier-group-relations';
 
 export type CoreViewerModifierExpectation = {
   id: string;
@@ -15,7 +19,10 @@ export type CoreViewerTemplateExpectation = {
   itemDaypart?: string;
   categoryName: string;
   groupId: string;
+  subgroupId: string | null;
+  resolvedGroupId: string;
   groupName: string;
+  resolvedGroupName: string;
   groupDescription: string;
   groupOrder: number;
   modifiers: CoreViewerModifierExpectation[];
@@ -34,6 +41,7 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   const groups = requiredTable(workbook, 'GrupoModificador');
   const modifiers = requiredTable(workbook, 'Modificadores');
   const categories = requiredTable(workbook, 'Categorias');
+  const subgroups = requiredTable(workbook, 'Subgrupos');
 
   const itemColumn = requiredColumn(items, ['Item']);
   const itemNameColumn = requiredColumn(items, ['Nombre Comercial']);
@@ -54,6 +62,9 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   const modifierIdColumn = requiredColumn(modifiers, ['Modificador']);
   const modifierNameColumn = requiredColumn(modifiers, ['Nombre Comercial Modificador']);
   const modifierOrderColumn = requiredColumn(modifiers, ['Orden', 'Posicion']);
+  const modifierSubgroupsColumn = requiredColumn(modifiers, ['Subgrupos']);
+  const subgroupCodeColumn = requiredColumn(subgroups, ['Subgrupo']);
+  const subgroupNameColumn = requiredColumn(subgroups, ['Nombre Comercial']);
 
   const editedGroupRow = findLastAutoGroupRow(groups.rows, groupNameColumn);
 
@@ -62,20 +73,50 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   }
 
   const groupId = canonicalId(groups.rows[editedGroupRow][groupIdColumn]);
-  const relatedModifierRows = modifiers.rows
-    .map((row, index) => ({ row, index }))
-    .filter(({ row, index }) =>
-      index > 0
-      && canonicalId(row[modifierGroupColumn]) === groupId
-      && displayValue(row[modifierNameColumn]).startsWith('AUTO_'));
-
-  if (relatedModifierRows.length < 2) {
+  const groupName = displayValue(groups.rows[editedGroupRow][groupNameColumn]);
+  const modifierMarker = `${groupName}_MOD_`;
+  const relations = resolveModifierGroupRelations({
+    baseGroups: [{
+      id: groupId,
+      name: groupName,
+      position: Number(groups.rows[editedGroupRow][groupOrderColumn]),
+      source: { sheet: groups.name, row: editedGroupRow + 1 },
+    }],
+    modifiers: modifiers.rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row, index }) =>
+        index > 0
+        && canonicalId(row[modifierGroupColumn]) === groupId
+        && displayValue(row[modifierNameColumn]).startsWith(modifierMarker))
+      .map(({ row, index }) => ({
+        itemId: canonicalId(row[modifierItemColumn]),
+        baseGroupId: groupId,
+        id: canonicalId(row[modifierIdColumn]),
+        name: displayValue(row[modifierNameColumn]),
+        position: Number(row[modifierOrderColumn]),
+        rawSubgroups: row[modifierSubgroupsColumn],
+        source: { sheet: modifiers.name, row: index + 1 },
+      })),
+    subgroups: subgroups.rows.slice(1)
+      .map((row, index) => ({
+        id: canonicalId(row[subgroupCodeColumn]),
+        name: displayValue(row[subgroupNameColumn]),
+        source: { sheet: subgroups.name, row: index + 2 },
+      }))
+      .filter(subgroup => subgroup.id),
+  });
+  const selectedRelation = selectEditableRelation(relations);
+  if (!selectedRelation) {
     throw new Error(
-      `No se encontraron al menos dos modificadores editados con marcador AUTO_ para el grupo ${groupId} en ${inputPath}.`,
+      `No se encontraron al menos dos modificadores editados de la misma relacion Item + Grupo + Subgrupo para el grupo ${groupId} en ${inputPath}.`,
     );
   }
 
-  const itemId = canonicalId(relatedModifierRows[0].row[modifierItemColumn]);
+  const itemId = selectedRelation.identity.itemId;
+  const subgroupId = selectedRelation.identity.subgroupId;
+  const relatedModifierRows = selectedRelation.modifiers;
+  const resolvedGroupId = selectedRelation.resolvedGroup.id;
+  const resolvedGroupName = selectedRelation.resolvedGroup.name;
   const itemRow = items.rows.find((row, index) => index > 0 && canonicalId(row[itemColumn]) === itemId);
   if (!itemRow) {
     throw new Error(`No se encontro el item ${itemId} en la hoja Items de ${inputPath}.`);
@@ -102,16 +143,17 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
       : undefined,
     categoryName: displayValue(categoryRow[categoryNameColumn]),
     groupId,
-    groupName: displayValue(groups.rows[editedGroupRow][groupNameColumn]),
+    subgroupId,
+    resolvedGroupId,
+    groupName,
+    resolvedGroupName,
     groupDescription: displayValue(groups.rows[editedGroupRow][groupDescriptionColumn]),
     groupOrder: Number(groups.rows[editedGroupRow][groupOrderColumn]),
-    modifiers: relatedModifierRows
-      .map(({ row }) => ({
-        id: canonicalId(row[modifierIdColumn]),
-        name: displayValue(row[modifierNameColumn]),
-        order: Number(row[modifierOrderColumn]),
-      }))
-      .sort((left, right) => left.order - right.order),
+    modifiers: relatedModifierRows.map(modifier => ({
+      id: modifier.id,
+      name: modifier.name,
+      order: modifier.position,
+    })),
   };
 }
 

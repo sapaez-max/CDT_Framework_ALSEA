@@ -19,7 +19,7 @@ Este documento concentra la explicación funcional de todos los escenarios. Los 
 | S09 | CP9, CP21, CP33, CP45 | `@reorden-grupos-modificadores` | Cambiar grupos y modificadores en una ejecución | S01 | `ordenamiento-reorden-grupos-modificadores` | Implementado |
 | S10 | CP10, CP22, CP34, CP46 | `@actualizar-menu` | Modificar selectivamente un menú publicado | S09 | `ordenamiento-actualizar-menu` | Implementado |
 | S11 | CP11, CP23, CP35, CP47 | `@conservar-orden` | Recargar un menú conservando su orden | S10 | `ordenamiento-conservar-orden` | Implementado |
-| S12 | CP12, CP24, CP36, CP48 | `@multiples-grupos` | Validar múltiples grupos modificadores | S11 | `ordenamiento-multiples-grupos` | Implementado |
+| S12 | CP12, CP24, CP36, CP48 | Por definir | Validar múltiples grupos modificadores | S11 | Por definir | Pendiente |
 
 ## Correspondencia por marca
 
@@ -80,8 +80,8 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 1. Localizar el Excel producido por S01 para el mismo dataset.
 2. Crear una copia en los artefactos del caso actual.
 3. Comprobar las hojas necesarias: `Items`, `Categorias`, `GrupoModificador` y `Modificadores`.
-4. Construir la lista de items elegibles y seleccionar el siguiente mediante una rotación estable por dataset, priorizando los que todavía no tienen una marca automática.
-5. Eliminar los sufijos automáticos anteriores del nombre comercial y agregar una única marca `AUTO_<CP>_<timestamp>`.
+4. Seleccionar un item con categoría no vacía, un grupo habilitado para el agregador y al menos dos modificadores relacionados.
+5. Agregar el identificador temporal de la ejecución al nombre comercial del item.
 6. Cambiar el nombre comercial y la descripción del grupo seleccionado.
 7. Cambiar el nombre comercial de los dos modificadores seleccionados.
 8. Guardar el item, la categoría, el grupo y los modificadores elegidos para las validaciones posteriores.
@@ -104,9 +104,9 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 4. Elegir `Nuevo menú` y `Versionar menú = No`.
 5. Adjuntar la plantilla e ingresar la descripción del caso.
 6. Enviar la carga y esperar su resultado.
-7. Cuando el dataset lo requiera, validar también el correo de procesamiento. Si la solicitud HTTP queda pendiente después de iniciarse, continuar con el correo como confirmación final.
+7. Cuando el dataset lo requiera, validar también el correo de procesamiento.
 
-**Validaciones principales:** la solicitud de carga fue enviada. Cuando el endpoint responde, debe hacerlo correctamente; si queda pendiente y el dataset exige validación por correo, el correo satisfactorio constituye la confirmación final del procesamiento.
+**Validaciones principales:** el portal acepta el archivo y la respuesta funcional indica que la carga fue enviada o procesada correctamente.
 
 **Salida:** plantilla enviada y evidencias disponibles de la carga y del correo.
 
@@ -161,9 +161,9 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 3. Obtener el JSON publicado.
 4. Comparar item, grupo, modificadores y órdenes contra la plantilla esperada.
 
-**Validaciones principales:** cada item, grupo y modificador debe coincidir en el mismo nodo JSON con su identificador, nombre y posición esperados. Para el grupo se acepta el identificador base del Excel o ese mismo valor seguido de un sufijo delimitado por `_`; items y modificadores mantienen coincidencia exacta. Los modificadores deben pertenecer al grupo seleccionado y conservar el orden definido. Cualquier fila con resultado `No coincide` hace fallar el caso.
+**Validaciones principales:** aparecen los identificadores y nombres esperados, los modificadores conservan el orden definido y no faltan entidades requeridas.
 
-**Salida:** JSON publicado del menú, plantilla usada como referencia y evidencia `Comparación de datos esperados y obtenidos en el JSON` con una fila consolidada por item, grupo y modificador, más una comparación independiente del orden.
+**Salida:** JSON publicado del menú y plantilla usada como referencia.
 
 ## S07 — Reordenar grupos modificadores
 
@@ -234,7 +234,7 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 3. Crear una copia del Excel.
 4. Aplicar los cambios selectivos de grupos y modificadores, manteniendo entidades de control sin cambios.
 5. Cargar filtros usando `Actualización` y `Versionar menú = Si`.
-6. Publicar nuevamente el menú y esperar los correos de procesamiento.
+6. Volver a publicar el menú y esperar los correos de procesamiento.
 7. Consultar el mismo producto hasta observar la actualización.
 8. Comparar el estado inicial, el esperado según el Excel y el estado final.
 
@@ -271,19 +271,7 @@ Cuando un grupo del Excel contiene varios códigos en `Subgrupos`, cada código 
 
 **Objetivo documental:** validar el comportamiento de un producto asociado a múltiples grupos modificadores y comprobar que cada grupo conserve sus relaciones y el orden configurado.
 
-**Flujo funcional:**
-
-1. Localizar la plantilla publicada por S11 para el mismo dataset.
-2. Consultar el producto en Visor CORE y guardar su JSON como estado inicial.
-3. Seleccionar un producto con múltiples grupos modificadores.
-4. Crear una copia del Excel agregando un identificador `AUTO_CPxx_YYYYMMDD_HHmmss` al nombre comercial del producto.
-5. Cargar los filtros como actualización y volver a publicar el menú.
-6. Esperar los correos de procesamiento.
-7. Consultar el producto actualizado y comparar sus grupos, modificadores y órdenes contra el estado esperado.
-
-**Validaciones principales:** el producto conserva múltiples grupos modificadores, cada grupo mantiene sus relaciones y posiciones, los modificadores quedan asociados al grupo correcto y no aparecen duplicados.
-
-**Salida:** plantillas de origen y resultado, resumen comparativo, correos y comparación antes/después de Visor CORE.
+**Estado:** pendiente de definición funcional e implementación. Antes de automatizarlo deben confirmarse con el cliente los datos de prueba, el comportamiento esperado, la dependencia definitiva y los criterios de aceptación. Actualmente no existe un spec ni un proyecto Playwright para este escenario.
 
 ## Ejecución por escenario
 

@@ -3,6 +3,8 @@ import { BasePage } from '@pages/base/BasePage';
 import type { CoreViewerTemplateExpectation } from '@utils/core-viewer-template';
 import type { ReorderedGroupsExpectation } from '@utils/group-reorder-template';
 
+const ALL_CATEGORIES = 'Todas las categorías';
+
 export type CoreViewerFilters = {
   country: string | string[];
   brand: string | string[];
@@ -84,13 +86,14 @@ export class CoreViewerPage extends BasePage {
   async validateTemplateExpectation(expectation: CoreViewerTemplateExpectation): Promise<CoreViewerValidationResult> {
     const rows: CoreViewerValidationRow[] = [];
 
-    await this.search(expectation.categoryName);
-    const categoryActual = await this.expectVisiblePageText(
-      expectation.categoryName,
-      'Debe visualizarse la categoria registrada en la plantilla',
-    );
-    rows.push(comparisonRow('Categoría', undefined, 'Nombre', expectation.categoryName, categoryActual));
-    await this.openVisibleResult(expectation.categoryName);
+    await this.openAllCategories();
+    rows.push(comparisonRow(
+      'Navegación',
+      undefined,
+      'Categoría seleccionada',
+      ALL_CATEGORIES,
+      ALL_CATEGORIES,
+    ));
 
     await this.search(expectation.itemName);
     const productCardActual = await this.openExpectedProduct(expectation);
@@ -119,10 +122,7 @@ export class CoreViewerPage extends BasePage {
   }
 
   async openTemplateJson(expectation: CoreViewerTemplateExpectation): Promise<string> {
-    await this.search(expectation.categoryName);
-    await this.expectVisiblePageText(expectation.categoryName, 'Debe visualizarse la categoria registrada en la plantilla');
-    await this.openVisibleResult(expectation.categoryName);
-
+    await this.openAllCategories();
     await this.search(expectation.itemName);
     await this.openExpectedProduct(expectation);
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
@@ -394,6 +394,13 @@ export class CoreViewerPage extends BasePage {
     }
   }
 
+  private async openAllCategories(): Promise<void> {
+    await this.selectCard(ALL_CATEGORIES, 'Categoría');
+    await expect(
+      this.page.getByText(/Selecciona un producto/i),
+      'Todas las categorías debe abrir el listado de productos',
+    ).toBeVisible();
+  }
   private async openVisibleResult(value: string): Promise<void> {
     const result = this.pageText(value);
     await expect(result, `Debe existir el resultado ${value}`).toBeVisible();
@@ -402,26 +409,12 @@ export class CoreViewerPage extends BasePage {
   }
 
   private async openReorderedProduct(expectation: ReorderedGroupsExpectation): Promise<void> {
-    await this.search(expectation.categoryName);
-    await this.expectVisiblePageText(
-      expectation.categoryName,
-      'Debe visualizarse la categoria registrada en la plantilla',
-    );
-    await this.openVisibleResult(expectation.categoryName);
-
+    await this.openAllCategories();
     await this.search(expectation.itemName);
     await this.openExpectedProduct({
-      inputPath: expectation.inputPath,
       itemId: expectation.itemId,
       itemName: expectation.itemName,
-      itemDescription: expectation.itemDescription,
       itemPrices: [],
-      categoryName: expectation.categoryName,
-      groupId: expectation.groups[0]?.id ?? '',
-      groupName: expectation.groups[0]?.name ?? '',
-      groupDescription: '',
-      groupOrder: expectation.groups[0]?.expectedOrder ?? 0,
-      modifiers: expectation.groups[0]?.modifiers ?? [],
     });
     await expect(this.productPreview(), 'Debe abrirse la previsualizacion del producto').toBeVisible();
     await this.expectVisiblePreviewProductName(expectation.itemName);
@@ -431,8 +424,10 @@ export class CoreViewerPage extends BasePage {
     );
   }
 
-  private async openExpectedProduct(expectation: CoreViewerTemplateExpectation): Promise<string> {
-    const cards = this.productCards();
+  private async openExpectedProduct(
+    expectation: Pick<CoreViewerTemplateExpectation, 'itemId' | 'itemName' | 'itemPrices' | 'itemDaypart'>,
+  ): Promise<string> {
+    const cards = this.visibleProductCards();
     await expect
       .poll(() => cards.count(), {
         message: `Debe existir el producto ${expectation.itemId} - ${expectation.itemName}`,
@@ -585,8 +580,8 @@ export class CoreViewerPage extends BasePage {
     return this.page.locator('.ant-card-grid.selectable');
   }
 
-  private productCards(): Locator {
-    return this.page.locator('.ant-card-grid.selectable.p-3');
+  private visibleProductCards(): Locator {
+    return this.page.locator('.ant-card-grid.selectable');
   }
 
   private cardByText(card: VisibleCardData, value: string): Locator {

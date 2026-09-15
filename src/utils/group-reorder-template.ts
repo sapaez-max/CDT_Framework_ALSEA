@@ -6,6 +6,10 @@ import {
   type CaseExcelCopy,
 } from './case-artifact-manager';
 import type { CoreViewerModifierExpectation } from './core-viewer-template';
+import {
+  resolveModifierGroupRelations,
+  type ModifierSubgroupInput,
+} from './modifier-group-relations';
 
 export type GroupReorderRequest = {
   caseId: string;
@@ -18,6 +22,7 @@ export type GroupReorderRequest = {
 
 export type ReorderedGroupExpectation = {
   id: string;
+  baseGroupId: string;
   name: string;
   previousOrder: number;
   expectedOrder: number;
@@ -149,6 +154,7 @@ type GroupSelection = {
   groupRows: Array<{
     row: number;
     id: string;
+    baseGroupId: string;
     name: string;
     order: number;
     modifiers: CoreViewerModifierExpectation[];
@@ -237,6 +243,7 @@ export function reorderOnlyGroups(request: GroupReorderRequest): GroupReorderRes
 
       return {
         id: group.id,
+        baseGroupId: group.baseGroupId,
         name: group.name,
         previousOrder: group.order,
         expectedOrder: reorderedOrders[index],
@@ -250,14 +257,14 @@ export function reorderOnlyGroups(request: GroupReorderRequest): GroupReorderRes
     inputPath,
     outputPath: inputPath,
     changes,
-    expectation: {
+    expectation: resolvedExpectationForSelectedGroups(inputPath, request.aggregator, {
       inputPath,
       itemId: selection.itemId,
       itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]),
       itemDescription: displayValue(items.rows[selection.itemRow][itemDescriptionColumn]),
       categoryName: selection.categoryName,
       groups: expectationGroups,
-    },
+    }),
   };
 }
 
@@ -375,6 +382,7 @@ export function reorderOnlyModifiers(request: GroupReorderRequest): GroupReorder
 
       return {
         id: group.id,
+        baseGroupId: group.baseGroupId,
         name: group.name,
         previousOrder: group.order,
         expectedOrder: group.order,
@@ -388,14 +396,14 @@ export function reorderOnlyModifiers(request: GroupReorderRequest): GroupReorder
     inputPath,
     outputPath: inputPath,
     changes,
-    expectation: {
+    expectation: resolvedExpectationForSelectedGroups(inputPath, request.aggregator, {
       inputPath,
       itemId: selection.itemId,
       itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]),
       itemDescription: displayValue(items.rows[selection.itemRow][itemDescriptionColumn]),
       categoryName: selection.categoryName,
       groups: expectationGroups,
-    },
+    }),
   };
 }
 
@@ -550,6 +558,7 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
 
       return {
         id: group.id,
+        baseGroupId: group.baseGroupId,
         name: group.name,
         previousOrder: group.order,
         expectedOrder,
@@ -563,14 +572,14 @@ export function reorderGroupsAndModifiers(request: GroupReorderRequest): GroupRe
     inputPath,
     outputPath: inputPath,
     changes,
-    expectation: {
+    expectation: resolvedExpectationForSelectedGroups(inputPath, request.aggregator, {
       inputPath,
       itemId: selection.itemId,
       itemName: displayValue(items.rows[selection.itemRow][itemNameColumn]),
       itemDescription: displayValue(items.rows[selection.itemRow][itemDescriptionColumn]),
       categoryName: selection.categoryName,
       groups: expectationGroups,
-    },
+    }),
   };
 }
 
@@ -598,15 +607,19 @@ export function readGroupsAndModifiersExpectation(
     ? requiredTable(workbook, 'Subgrupos')
     : undefined;
 
-  const subgroupNameByCode = new Map<string, string>();
+  const subgroupDefinitions: ModifierSubgroupInput[] = [];
   if (subgroups) {
     const subgroupCodeColumn = requiredColumn(subgroups, ['Subgrupo']);
     const subgroupNameColumn = requiredColumn(subgroups, ['Nombre Comercial']);
-    for (const row of subgroups.rows.slice(1)) {
-      const code = canonicalId(row[subgroupCodeColumn]);
+    for (const [index, row] of subgroups.rows.slice(1).entries()) {
+      const id = canonicalId(row[subgroupCodeColumn]);
       const name = displayValue(row[subgroupNameColumn]);
-      if (code && name && !subgroupNameByCode.has(code)) {
-        subgroupNameByCode.set(code, name);
+      if (id) {
+        subgroupDefinitions.push({
+          id,
+          name,
+          source: { sheet: subgroups.name, row: index + 2 },
+        });
       }
     }
   }
@@ -626,9 +639,6 @@ export function readGroupsAndModifiersExpectation(
     groupNameColumn: requiredColumn(groups, ['Nombre Comercial']),
     groupOrderColumn: requiredColumn(groups, ['Orden', 'Posicion']),
     groupAggregatorColumn: requiredColumn(groups, [aggregator]),
-    groupSubgroupsColumn: options.includeAllGroups
-      ? requiredColumn(groups, ['Subgrupos'])
-      : undefined,
     modifierItemColumn: requiredColumn(modifiers, ['Item']),
     modifierGroupColumn: requiredColumn(modifiers, ['Grupo Modificador']),
     modifierIdColumn: requiredColumn(modifiers, ['Modificador']),
@@ -638,7 +648,7 @@ export function readGroupsAndModifiersExpectation(
     modifierSubgroupsColumn: options.includeAllGroups
       ? requiredColumn(modifiers, ['Subgrupos'])
       : undefined,
-    subgroupNameByCode,
+    subgroups: subgroupDefinitions,
     aggregator,
     minimumGroups: options.minimumGroups,
     minimumModifiersPerGroup: options.minimumModifiersPerGroup ?? 2,
@@ -657,6 +667,7 @@ export function readGroupsAndModifiersExpectation(
     groups: selection.groupRows
       .map(group => ({
         id: group.id,
+        baseGroupId: group.baseGroupId,
         name: group.name,
         previousOrder: group.order,
         expectedOrder: group.order,
@@ -665,6 +676,52 @@ export function readGroupsAndModifiersExpectation(
           .map(({ id, name, order }) => ({ id, name, order })),
       }))
       .sort((left, right) => left.expectedOrder - right.expectedOrder),
+  };
+}
+
+function resolvedExpectationForSelectedGroups(
+  inputPath: string,
+  aggregator: string,
+  baseExpectation: ReorderedGroupsExpectation,
+): ReorderedGroupsExpectation {
+  const resolved = readGroupsAndModifiersExpectation(inputPath, aggregator, {
+    itemId: baseExpectation.itemId,
+    includeAllGroups: true,
+    minimumGroups: 1,
+    minimumModifiersPerGroup: 1,
+    requireUniqueModifierOrders: false,
+    excludeAutomatedModifiers: false,
+  });
+
+  const selectedResolvedGroups = resolved.groups
+    .filter(group => baseExpectation.groups.some(baseGroup =>
+      group.baseGroupId === baseGroup.baseGroupId))
+    .map(group => {
+      const baseMatches = baseExpectation.groups.filter(baseGroup =>
+        group.baseGroupId === baseGroup.baseGroupId);
+      if (baseMatches.length !== 1) {
+        throw new Error(
+          `No se pudo asociar de forma unica el grupo publicado ${group.id} con los grupos base seleccionados.`,
+        );
+      }
+
+      return {
+        ...group,
+        previousOrder: baseMatches[0].previousOrder,
+      };
+    });
+  const missingBaseGroups = baseExpectation.groups.filter(baseGroup =>
+    !selectedResolvedGroups.some(group =>
+      group.baseGroupId === baseGroup.baseGroupId));
+  if (missingBaseGroups.length > 0) {
+    throw new Error(
+      `No se generaron grupos resueltos para: ${missingBaseGroups.map(group => group.id).join(', ')}.`,
+    );
+  }
+
+  return {
+    ...resolved,
+    groups: selectedResolvedGroups,
   };
 }
 
@@ -680,7 +737,6 @@ function selectItemWithThreeGroups(input: {
   groupNameColumn: number;
   groupOrderColumn: number;
   groupAggregatorColumn: number;
-  groupSubgroupsColumn?: number;
   modifierItemColumn: number;
   modifierGroupColumn: number;
   modifierIdColumn: number;
@@ -688,7 +744,7 @@ function selectItemWithThreeGroups(input: {
   modifierOrderColumn: number;
   modifierAggregatorColumn: number;
   modifierSubgroupsColumn?: number;
-  subgroupNameByCode?: ReadonlyMap<string, string>;
+  subgroups?: ModifierSubgroupInput[];
   aggregator: string;
   minimumGroups?: number;
   minimumModifiersPerGroup?: number;
@@ -716,7 +772,6 @@ function selectItemWithThreeGroups(input: {
     id: string;
     name: string;
     order: number;
-    subgroupCodes: string[];
   }>();
   for (let row = 1; row < input.groups.rows.length; row += 1) {
     if (!isEnabled(input.groups.rows[row][input.groupAggregatorColumn])) continue;
@@ -724,19 +779,17 @@ function selectItemWithThreeGroups(input: {
     const name = displayValue(input.groups.rows[row][input.groupNameColumn]);
     const order = Number(input.groups.rows[row][input.groupOrderColumn]);
     if (id && name && Number.isFinite(order)) {
-      const subgroupCodes = input.groupSubgroupsColumn === undefined
-        ? []
-        : splitSubgroupCodes(input.groups.rows[row][input.groupSubgroupsColumn]);
-      groupById.set(id, { row, id, name, order, subgroupCodes });
+      groupById.set(id, { row, id, name, order });
     }
   }
 
   type ParsedModifier = CoreViewerModifierExpectation & {
     groupDisplayName: string;
-    subgroupCodes: string[];
+    rawSubgroups: unknown;
+    source: { sheet: string; row: number };
   };
   const modifiersByItemGroup = new Map<string, ParsedModifier[]>();
-  for (const row of input.modifiers.rows.slice(1)) {
+  for (const [index, row] of input.modifiers.rows.slice(1).entries()) {
     if (!isEnabled(row[input.modifierAggregatorColumn])) continue;
     const itemId = canonicalId(row[input.modifierItemColumn]);
     const groupId = canonicalId(row[input.modifierGroupColumn]);
@@ -745,9 +798,10 @@ function selectItemWithThreeGroups(input: {
       name: displayValue(row[input.modifierNameColumn]),
       order: Number(row[input.modifierOrderColumn]),
       groupDisplayName: displayValue(row[input.modifierGroupColumn + 1]),
-      subgroupCodes: input.modifierSubgroupsColumn === undefined
-        ? []
-        : splitSubgroupCodes(row[input.modifierSubgroupsColumn]),
+      rawSubgroups: input.modifierSubgroupsColumn === undefined
+        ? null
+        : row[input.modifierSubgroupsColumn],
+      source: { sheet: input.modifiers.name, row: index + 2 },
     };
     if (!itemId || !groupId || !modifier.id || !modifier.name || !Number.isFinite(modifier.order)) continue;
     const key = `${itemId}::${groupId}`;
@@ -766,6 +820,7 @@ function selectItemWithThreeGroups(input: {
           .sort((left, right) => left.order - right.order);
         return {
           ...group,
+          baseGroupId: group.id,
           name: visualGroupName(group.name, modifiers[0]?.groupDisplayName ?? group.name),
           modifiers,
         };
@@ -782,19 +837,37 @@ function selectItemWithThreeGroups(input: {
       .sort((left, right) => left.order - right.order);
 
     const visualGroups = input.includeAllGroups
-      ? relatedGroups.flatMap(group => {
-        if (group.subgroupCodes.length === 0) return [group];
-
-        return group.subgroupCodes
-          .map(subgroupCode => ({
-            ...group,
-            id: `${group.id}_${subgroupCode}`,
-            name: input.subgroupNameByCode?.get(subgroupCode) ?? group.name,
-            modifiers: group.modifiers.filter(modifier =>
-              modifier.subgroupCodes.includes(subgroupCode)),
-          }))
-          .filter(group => group.modifiers.length >= minimumModifiersPerGroup);
+      ? resolveModifierGroupRelations({
+        baseGroups: relatedGroups.map(group => ({
+          id: group.id,
+          name: group.name,
+          position: group.order,
+          source: { sheet: input.groups.name, row: group.row + 1 },
+        })),
+        modifiers: relatedGroups.flatMap(group => group.modifiers.map(modifier => ({
+          itemId,
+          baseGroupId: group.id,
+          id: modifier.id,
+          name: modifier.name,
+          position: modifier.order,
+          rawSubgroups: modifier.rawSubgroups,
+          source: modifier.source,
+        }))),
+        subgroups: input.subgroups ?? [],
       })
+        .map(relation => ({
+          row: relation.baseGroup.source?.row ? relation.baseGroup.source.row - 1 : -1,
+          id: relation.resolvedGroup.id,
+          baseGroupId: relation.identity.baseGroupId,
+          name: relation.resolvedGroup.name,
+          order: relation.baseGroup.position,
+          modifiers: relation.modifiers.map(modifier => ({
+            id: modifier.id,
+            name: modifier.name,
+            order: modifier.position,
+          })),
+        }))
+        .filter(group => group.modifiers.length >= minimumModifiersPerGroup)
       : relatedGroups;
 
     const visuallyStableGroups = visualGroups.filter(group => !/^Adicionales$/i.test(group.name));
@@ -921,13 +994,6 @@ function verifySavedTemplate(
       );
     }
   }
-}
-
-function splitSubgroupCodes(value: unknown): string[] {
-  return displayValue(value)
-    .split(/[,;|]/)
-    .map(canonicalId)
-    .filter(Boolean);
 }
 
 function isEnabled(value: unknown): boolean {
