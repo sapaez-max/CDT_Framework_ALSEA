@@ -29,12 +29,12 @@ export async function validateVisorWorkflow(
 
   const excel = new ExcelService();
   const prepared = await test.step(
-    `Copiar plantilla generada por ${caseData.sourceCaseId}`,
-    () => excel.copyFromCase(caseData.sourceCaseId, caseData.id, artifactScope(context)),
+    `Referenciar plantilla generada por ${caseData.sourceCaseId}`,
+    () => excel.referenceFromCase(caseData.sourceCaseId, artifactScope(context)),
   );
   const expectation = await test.step(
     'Leer item, grupo y modificadores que deben validarse',
-    () => excel.readViewerExpectation(prepared.targetPath),
+    () => excel.readViewerExpectation(prepared.sourcePath),
   );
 
   context.files.uploaded = prepared.sourcePath;
@@ -57,10 +57,10 @@ export async function validateVisorWorkflow(
   await test.step('Validar en Visor CORE los datos de la plantilla', () =>
     validateCoreViewer(page, caseData, expectation, testInfo));
 
-  expect(prepared.targetPath, 'La plantilla validada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(buildExcelAttachmentName('Plantilla esperada para validación en Visor CORE', prepared.targetPath), {
-    path: prepared.targetPath,
-    contentType: excelContentType(prepared.targetPath),
+  expect(prepared.sourcePath, 'La plantilla validada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(buildExcelAttachmentName('Plantilla esperada para validación en Visor CORE', prepared.sourcePath), {
+    path: prepared.sourcePath,
+    contentType: excelContentType(prepared.sourcePath),
   });
   return context;
 }

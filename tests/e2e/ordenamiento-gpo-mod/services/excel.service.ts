@@ -19,6 +19,10 @@ export class ExcelService {
     return copyExcelFromPreviousCase({ fromCase, toCase, scope });
   }
 
+  referenceFromCase(fromCase: string, _scope: ArtifactScope) {
+    return { sourcePath: getLatestExcelForCase(fromCase, _scope) };
+  }
+
   editTemplate(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
     return editDownloadedTemplate({ caseId, sourceCaseId, aggregator, artifactScope: scope });
   }

@@ -2,7 +2,36 @@
 
 ## Artefactos de entrada y salida
 
-Cada caso trabaja sobre una copia localizada dentro de su corrida, CP y dataset. Antes de modificar un archivo, el servicio exige una única coincidencia válida. No selecciona arbitrariamente entre varios Excel.
+Cada caso trabaja sobre un archivo Excel ubicado dentro de su corrida, CP y dataset. El framework usa un modelo **Copy-on-Write** para minimizar archivos redundantes:
+
+| Tipo de CP | Comportamiento | Ejemplo |
+|------------|----------------|---------|
+| **Descarga** | Crea el primer Excel desde el correo | CP1, CP13, CP25, CP37 |
+| **Modificación** | Copia el Excel del CP fuente y lo edita | CP2, CP7, CP8, CP9, CP10, CP11, CP12 |
+| **Solo lectura** | Referencia el Excel existente sin copiar | CP3, CP4, CP5, CP6 |
+
+```text
+artifacts/runs/{runId}/
+├── CP1/template.xlsx          ← CREADO (descarga)
+├── CP2/edited.xlsx            ← CREADO (modifica)
+│   CP3/ → referencia CP2      ← NO crea archivo nuevo
+│   CP4/ → referencia CP2      ← NO crea archivo nuevo
+│   CP5/ → referencia CP2      ← NO crea archivo nuevo
+│   CP6/ → referencia CP2      ← NO crea archivo nuevo
+├── CP7/reorder-groups.xlsx    ← CREADO (modifica)
+├── CP8/reorder-mods.xlsx      ← CREADO (modifica)
+├── CP9/reorder-both.xlsx      ← CREADO (modifica)
+├── CP10/update.xlsx           ← CREADO (modifica)
+├── CP11/preserve.xlsx         ← CREADO (modifica)
+└── CP12/multiple.xlsx         ← CREADO (modifica)
+```
+
+**Beneficios:**
+- Menos archivos redundantes en disco
+- Cada ejecución (`runId`) aísla sus artefactos para preservar reportes históricos
+- Los CPs de solo lectura apuntan al archivo más reciente del CP fuente
+
+Antes de modificar un archivo, el servicio exige una única coincidencia válida. No selecciona arbitrariamente entre varios Excel.
 
 Los casos de edición CP2, CP14, CP26 y CP38 consumen respectivamente los archivos de CP1, CP13, CP25 y CP37. Los casos posteriores toman el resultado del escenario anterior para la misma combinación.
 

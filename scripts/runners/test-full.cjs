@@ -83,7 +83,7 @@ function buildPlan(data, brandId, timestamp, runIdOverride) {
     throw new Error(`No hay escenarios implementados para ${brand.displayName}.`);
   }
 
-  const runId = runIdOverride ?? `FULL_${brandCode(brand)}_${timestamp}`;
+  const runId = runIdOverride ?? `${brandCode(brand)}_${timestamp}`;
   return {
     runId,
     timestamp,

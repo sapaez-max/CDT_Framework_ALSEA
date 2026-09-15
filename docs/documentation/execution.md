@@ -79,7 +79,7 @@ abre un asistente de consola que solicita únicamente la marca:
 
 No solicita país, sucursal, código de sucursal, agregador ni tipo de menú. El runner reutiliza el dataset permanente habilitado para la marca seleccionada y resuelve los CP con `resolveCaseId`.
 
-El runner genera un timestamp local `YYYYMMDD_HHmmss`, un `runId` como `FULL_BK_20260914_161530`, y ejecuta los proyectos en el orden de `scenarioIds`, siempre con `workers=1`, filtrando por el `datasetId` permanente para que cada dependencia consuma artefactos del mismo dataset y del mismo `runId`.
+El runner genera un timestamp local `YYYYMMDD_HHmmss`, un `runId` como `BK_20260914_161530` (código de marca + timestamp), y ejecuta los proyectos en el orden de `scenarioIds`, siempre con `workers=1`, filtrando por el `datasetId` permanente para que cada dependencia consuma artefactos del mismo dataset y del mismo `runId`.
 
 Si un escenario falla, los siguientes quedan `SKIPPED` por fail-fast y se conserva el reporte estándar de Playwright con traces, screenshots, videos y attachments según la configuración existente. Además se escribe:
 

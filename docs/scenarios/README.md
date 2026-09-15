@@ -19,7 +19,7 @@ Este documento concentra la explicación funcional de todos los escenarios. Los 
 | S09 | CP9, CP21, CP33, CP45 | `@reorden-grupos-modificadores` | Cambiar grupos y modificadores en una ejecución | S01 | `ordenamiento-reorden-grupos-modificadores` | Implementado |
 | S10 | CP10, CP22, CP34, CP46 | `@actualizar-menu` | Modificar selectivamente un menú publicado | S09 | `ordenamiento-actualizar-menu` | Implementado |
 | S11 | CP11, CP23, CP35, CP47 | `@conservar-orden` | Recargar un menú conservando su orden | S10 | `ordenamiento-conservar-orden` | Implementado |
-| S12 | CP12, CP24, CP36, CP48 | Por definir | Validar múltiples grupos modificadores | S11 | Por definir | Pendiente |
+| S12 | CP12, CP24, CP36, CP48 | `@multiples-grupos` | Validar múltiples grupos modificadores | S11 | `ordenamiento-multiples-grupos` | Implementado |
 
 ## Correspondencia por marca
 
@@ -269,9 +269,22 @@ Cuando un grupo del Excel contiene varios códigos en `Subgrupos`, cada código 
 
 **Casos:** CP12, CP24, CP36 y CP48.
 
-**Objetivo documental:** validar el comportamiento de un producto asociado a múltiples grupos modificadores y comprobar que cada grupo conserve sus relaciones y el orden configurado.
+**Objetivo:** validar el comportamiento de un producto asociado a múltiples grupos modificadores y comprobar que cada grupo conserve sus relaciones y el orden configurado.
 
-**Estado:** pendiente de definición funcional e implementación. Antes de automatizarlo deben confirmarse con el cliente los datos de prueba, el comportamiento esperado, la dependencia definitiva y los criterios de aceptación. Actualmente no existe un spec ni un proyecto Playwright para este escenario.
+**Flujo funcional:**
+
+1. Localizar la plantilla publicada por S11 para el mismo dataset.
+2. Consultar el producto en Visor CORE y guardar su JSON inicial.
+3. Identificar el producto con múltiples grupos modificadores (mínimo 4 grupos, mínimo 2 modificadores por grupo).
+4. Crear una copia del Excel y reordenar múltiples grupos y modificadores simultáneamente.
+5. Cargar los filtros como actualización y volver a publicar el menú.
+6. Esperar los correos de procesamiento.
+7. Consultar el producto actualizado y comparar su estructura contra el estado inicial.
+8. Validar que todos los grupos conserven sus modificadores y el orden configurado.
+
+**Validaciones principales:** múltiples grupos modificadores aparecen en el orden definido, cada modificador se encuentra en su grupo correcto, no existen duplicados ni entidades faltantes.
+
+**Salida:** plantillas de origen y resultado, resumen comparativo, correos y comparación antes/después de Visor CORE.
 
 ## Ejecución por escenario
 

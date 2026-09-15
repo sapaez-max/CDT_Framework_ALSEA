@@ -29,12 +29,12 @@ export async function validateJsonWorkflow(
 
   const excel = new ExcelService();
   const prepared = await test.step(
-    `Copiar plantilla validada por ${caseData.sourceCaseId}`,
-    () => excel.copyFromCase(caseData.sourceCaseId, caseData.id, artifactScope(context)),
+    `Referenciar plantilla validada por ${caseData.sourceCaseId}`,
+    () => excel.referenceFromCase(caseData.sourceCaseId, artifactScope(context)),
   );
   const expectation = await test.step(
     'Leer item, grupo, modificadores y ordenes esperados',
-    () => excel.readViewerExpectation(prepared.targetPath),
+    () => excel.readViewerExpectation(prepared.sourcePath),
   );
 
   context.files.uploaded = prepared.sourcePath;
@@ -58,10 +58,10 @@ export async function validateJsonWorkflow(
   await test.step('Validar JSON publicado del menu', () =>
     validatePublishedMenuJson(page, caseData, expectation, testInfo));
 
-  expect(prepared.targetPath, 'La plantilla usada como referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para validar el JSON', prepared.targetPath), {
-    path: prepared.targetPath,
-    contentType: excelContentType(prepared.targetPath),
+  expect(prepared.sourcePath, 'La plantilla usada como referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para validar el JSON', prepared.sourcePath), {
+    path: prepared.sourcePath,
+    contentType: excelContentType(prepared.sourcePath),
   });
 
   return context;

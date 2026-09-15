@@ -36,14 +36,13 @@ export async function uploadMenuWorkflow(
   });
 
   const prepared = await test.step(
-    `Copiar plantilla generada por ${caseData.sourceCaseId}`,
-    () => new ExcelService().copyFromCase(
+    `Referenciar plantilla generada por ${caseData.sourceCaseId}`,
+    () => new ExcelService().referenceFromCase(
       caseData.sourceCaseId,
-      caseData.id,
       artifactScope(context),
     ),
   );
-  context.files.uploaded = prepared.targetPath;
+  context.files.uploaded = prepared.sourcePath;
   const menuPage = new MenuAdministrationPage(page);
   const gmail = new GmailService(gmailClient);
   const baseline = await test.step('Capturar linea base de Gmail', () =>
@@ -70,10 +69,10 @@ export async function uploadMenuWorkflow(
   await attachGmailEvidence(testInfo, caseData, email, 'menu-load');
   throwIfMenuLoadFailed(loadResult);
 
-  expect(prepared.targetPath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para generar el menú', prepared.targetPath), {
-    path: prepared.targetPath,
-    contentType: excelContentType(prepared.targetPath),
+  expect(prepared.sourcePath, 'La plantilla de referencia debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(buildExcelAttachmentName('Plantilla utilizada para generar el menú', prepared.sourcePath), {
+    path: prepared.sourcePath,
+    contentType: excelContentType(prepared.sourcePath),
   });
   return context;
 }

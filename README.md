@@ -103,6 +103,39 @@ src/utils/          Procesamiento y utilidades compartidas
 
 Cada escenario se implementa una vez y genera una ejecución independiente por cada juego de datos habilitado. El CP documental pertenece a la marca; el reporte conserva también el `datasetId` para distinguir sucursal, agregador, tipo de menú y artefactos. Consulta [Arquitectura](docs/documentation/architecture.md) para conocer las responsabilidades de cada capa.
 
+## Modelo de artefactos
+
+El framework usa un modelo **Copy-on-Write** para los archivos Excel:
+
+| Tipo de CP | Comportamiento | Ejemplo |
+|------------|----------------|---------|
+| **Descarga** | Crea el primer Excel desde el correo | CP1, CP13, CP25, CP37 |
+| **Modificación** | Copia el Excel del CP fuente y lo edita | CP2, CP7, CP8, CP9, CP10, CP11, CP12 |
+| **Solo lectura** | Referencia el Excel existente sin copiar | CP3, CP4, CP5, CP6 |
+
+```text
+artifacts/runs/{runId}/
+├── CP1/template.xlsx          ← CREADO (descarga)
+├── CP2/edited.xlsx            ← CREADO (modifica)
+│   CP3/ → referencia CP2      ← NO crea archivo nuevo
+│   CP4/ → referencia CP2      ← NO crea archivo nuevo
+│   CP5/ → referencia CP2      ← NO crea archivo nuevo
+│   CP6/ → referencia CP2      ← NO crea archivo nuevo
+├── CP7/reorder-groups.xlsx    ← CREADO (modifica)
+├── CP8/reorder-mods.xlsx      ← CREADO (modifica)
+├── CP9/reorder-both.xlsx      ← CREADO (modifica)
+├── CP10/update.xlsx           ← CREADO (modifica)
+├── CP11/preserve.xlsx         ← CREADO (modifica)
+└── CP12/multiple.xlsx         ← CREADO (modifica)
+```
+
+**Beneficios:**
+- Menos archivos redundantes en disco
+- Cada ejecución (`runId`) aísla sus artefactos para preservar reportes históricos
+- Los CPs de solo lectura apuntan al archivo más reciente del CP fuente
+
+En ejecuciones directas, los artifacts se guardan en `artifacts/runs/manual/`. En ejecuciones con `test:full`, se genera un `runId` con formato `BK_20260915_103045` (código de marca + timestamp) para aíslar cada corrida.
+
 ## Documentación
 
 - [Autenticación](docs/documentation/authentication.md)

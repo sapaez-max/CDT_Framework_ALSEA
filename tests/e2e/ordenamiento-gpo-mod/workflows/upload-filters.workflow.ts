@@ -30,15 +30,14 @@ export async function uploadFiltersWorkflow(
   });
 
   const prepared = await test.step(
-    `Copiar plantilla generada por ${caseData.sourceCaseId}`,
-    () => new ExcelService().copyFromCase(
+    `Referenciar plantilla generada por ${caseData.sourceCaseId}`,
+    () => new ExcelService().referenceFromCase(
       caseData.sourceCaseId,
-      caseData.id,
       artifactScope(context),
     ),
   );
   context.files.edited = prepared.sourcePath;
-  context.files.uploaded = prepared.targetPath;
+  context.files.uploaded = prepared.sourcePath;
   const menuPage = new MenuAdministrationPage(page);
   const gmail = gmailClient ? new GmailService(gmailClient) : undefined;
   const baseline = caseData.expectedEmailSubject
@@ -50,7 +49,7 @@ export async function uploadFiltersWorkflow(
 
   await test.step('Cargar la plantilla de filtros con los datos seleccionados', async () => {
     await menuPage.openFilterLoad();
-    await menuPage.loadFilters(caseData, prepared.targetPath, {
+    await menuPage.loadFilters(caseData, prepared.sourcePath, {
       allowPendingResponse: Boolean(
         caseData.expectedEmailSubject
         && caseData.expectedEmailBodyFields,
@@ -69,10 +68,10 @@ export async function uploadFiltersWorkflow(
     await attachGmailEvidence(testInfo, caseData, email, 'filter-load');
   }
 
-  expect(prepared.targetPath, 'La plantilla cargada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
-  await testInfo.attach(buildExcelAttachmentName('Plantilla enviada para carga de filtros', prepared.targetPath), {
-    path: prepared.targetPath,
-    contentType: excelContentType(prepared.targetPath),
+  expect(prepared.sourcePath, 'La plantilla cargada debe ser un archivo Excel').toMatch(/\.xlsx?$/i);
+  await testInfo.attach(buildExcelAttachmentName('Plantilla enviada para carga de filtros', prepared.sourcePath), {
+    path: prepared.sourcePath,
+    contentType: excelContentType(prepared.sourcePath),
   });
   return context;
 }
