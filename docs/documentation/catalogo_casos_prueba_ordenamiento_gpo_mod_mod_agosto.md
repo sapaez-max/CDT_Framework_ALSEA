@@ -5,7 +5,7 @@
 ## Estandar aplicado
 Este catalogo conserva una estructura uniforme por escenario y caso de prueba, con bandera `Implementado` y secciones de titulo, descripcion, precondiciones, datos, pasos y resultado esperado.
 
-Tambien se consideraron las convenciones del framework documentadas en `README.md` y `AGENTS.md`: los escenarios documentales se mantienen en `docs/documentation/`, la automatizacion futura debe vivir en `tests/e2e/`, y las specs deberan importar `test` y `expect` desde `@fixtures/base.fixture` sin esperas fijas.
+Tambien se consideraron las convenciones del framework documentadas en `README.md` y `AGENTS.md`: los escenarios documentales se mantienen en `docs/documentation/`, la automatizacion implementada vive en `tests/e2e/`, y las specs importan `test` y `expect` desde `@fixtures/base.fixture` sin esperas fijas.
 
 ## Trazabilidad del Excel
 - Archivo fuente: `docs/MP_OrdenamientoGpoMod_Mod_AGOSTO.xlsx`
@@ -13,6 +13,7 @@ Tambien se consideraron las convenciones del framework documentadas en `README.m
 - Hojas revisadas sin incorporarse como casos: `Data` (catalogo de valores) y `Hoja1` (mapa de secciones/reportes, sin IDs de caso).
 - Total de casos identificados: 48
 - Total de casos incluidos: 48
+- Total de casos marcados como implementados: 48
 - Rango de IDs conservado: `CP1` a `CP48`
 
 ## Catalogos auxiliares detectados
@@ -35,7 +36,7 @@ Tambien se consideraron las convenciones del framework documentadas en `README.m
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@starbucks`
 
 ### Caso de prueba: CP1
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 2
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -80,7 +81,7 @@ Tambien se consideraron las convenciones del framework documentadas en `README.m
 ---
 
 ### Caso de prueba: CP2
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 3
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -123,7 +124,7 @@ B.En la pestaña Vigencias, los horarios de la tienda deben estar dentro del ran
 ---
 
 ### Caso de prueba: CP3
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 4
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -171,7 +172,7 @@ B.En la pestaña Vigencias, los horarios de la tienda deben estar dentro del ran
 ---
 
 ### Caso de prueba: CP4
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 5
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -211,7 +212,7 @@ B.En la pestaña Vigencias, los horarios de la tienda deben estar dentro del ran
 ---
 
 ### Caso de prueba: CP5
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 6
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -246,7 +247,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP6
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 7
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -284,7 +285,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP7
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 8
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -326,7 +327,7 @@ C.El cambio de orden del grupo no modifica el orden interno de sus modificadores
 ---
 
 ### Caso de prueba: CP8
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 9
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -365,7 +366,7 @@ C.Ningún otro grupo modificador cambia de posición como consecuencia de la mod
 ---
 
 ### Caso de prueba: CP9
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 10
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -406,7 +407,7 @@ D. Los cambios realizados en los grupos de modificadores y en sus modificadores 
 ---
 
 ### Caso de prueba: CP10
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 11
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -490,7 +491,7 @@ D. La actualización puede identificarse mediante el cambio de nombre del ítem 
 ---
 
 ### Caso de prueba: CP12
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `SBX`
 - Fila origen Excel: 13
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -547,7 +548,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@burger-king`
 
 ### Caso de prueba: CP13
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 2
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -592,7 +593,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP14
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 3
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -635,7 +636,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP15
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 4
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -681,7 +682,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP16
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 5
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -721,7 +722,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP17
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 6
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -761,7 +762,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP18
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 7
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -799,7 +800,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP19
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 8
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -841,7 +842,7 @@ C.El cambio de orden del grupo no modifica el orden interno de sus modificadores
 ---
 
 ### Caso de prueba: CP20
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 9
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -880,7 +881,7 @@ C.Ningún otro grupo modificador cambia de posición como consecuencia de la mod
 ---
 
 ### Caso de prueba: CP21
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 10
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -921,7 +922,7 @@ D. Los cambios realizados en los grupos de modificadores y en sus modificadores 
 ---
 
 ### Caso de prueba: CP22
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 11
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1005,7 +1006,7 @@ D. La actualización puede identificarse mediante el cambio de nombre del ítem 
 ---
 
 ### Caso de prueba: CP24
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `BK`
 - Fila origen Excel: 13
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1062,7 +1063,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@vips`
 
 ### Caso de prueba: CP25
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 2
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1103,7 +1104,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP26
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 3
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1146,7 +1147,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP27
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 4
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1196,7 +1197,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP28
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 5
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1236,7 +1237,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP29
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 6
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1271,7 +1272,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP30
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 7
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1304,7 +1305,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP31
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 8
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1346,7 +1347,7 @@ C.El cambio de orden del grupo no modifica el orden interno de sus modificadores
 ---
 
 ### Caso de prueba: CP32
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 9
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1385,7 +1386,7 @@ C.Ningún otro grupo modificador cambia de posición como consecuencia de la mod
 ---
 
 ### Caso de prueba: CP33
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 10
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1426,7 +1427,7 @@ D. Los cambios realizados en los grupos de modificadores y en sus modificadores 
 ---
 
 ### Caso de prueba: CP34
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 11
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1510,7 +1511,7 @@ D. La actualización puede identificarse mediante el cambio de nombre del ítem 
 ---
 
 ### Caso de prueba: CP36
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `VIPS`
 - Fila origen Excel: 13
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1567,7 +1568,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 **Etiquetas sugeridas:** `@catalogo` `@menu` `@administracion` `@visor-core` `@ordenamiento-gpo-mod` `@chilis`
 
 ### Caso de prueba: CP37
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 2
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1609,7 +1610,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP38
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 3
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1652,7 +1653,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP39
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 4
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1700,7 +1701,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP40
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 5
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1742,7 +1743,7 @@ E.La información visualizada en Visor CORE coincide con la configuración estab
 ---
 
 ### Caso de prueba: CP41
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 6
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1784,7 +1785,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP42
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 7
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1824,7 +1825,7 @@ B. Los filtros de país, marca, sucursal y agregador están correctamente config
 ---
 
 ### Caso de prueba: CP43
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 8
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1866,7 +1867,7 @@ C.El cambio de orden del grupo no modifica el orden interno de sus modificadores
 ---
 
 ### Caso de prueba: CP44
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 9
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1905,7 +1906,7 @@ C.Ningún otro grupo modificador cambia de posición como consecuencia de la mod
 ---
 
 ### Caso de prueba: CP45
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 10
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -1946,7 +1947,7 @@ D. Los cambios realizados en los grupos de modificadores y en sus modificadores 
 ---
 
 ### Caso de prueba: CP46
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 11
 - REQ: OrdenamientoGpoMod&Mod 2.0
@@ -2030,7 +2031,7 @@ D. La actualización puede identificarse mediante el cambio de nombre del ítem 
 ---
 
 ### Caso de prueba: CP48
-- Implementado: No
+- Implementado: Sí
 - Hoja origen: `Chili´s`
 - Fila origen Excel: 13
 - REQ: OrdenamientoGpoMod&Mod 2.0

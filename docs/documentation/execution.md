@@ -57,7 +57,7 @@ Después de registrar una combinación:
 
 ```powershell
 npm run data:validate
-npm run dataset:init -- starbucks-wtc-rappi
+npm run dataset:init -- starbucks-wtc-uber
 ```
 
 El segundo comando valida la configuración y ejecuta el proyecto `ordenamiento-descarga` filtrado por el `datasetId`. Utiliza el workflow normal, la sesión y la integración de Gmail configurados; no duplica la lógica de descarga.

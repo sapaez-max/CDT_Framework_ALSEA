@@ -25,7 +25,7 @@ Este documento concentra la explicación funcional de todos los escenarios. Los 
 
 | Marca | Rango documental | Ejemplo de dataset |
 | --- | --- | --- |
-| Starbucks | CP1–CP12 | `starbucks-wtc-rappi` |
+| Starbucks | CP1–CP12 | `starbucks-wtc-uber` |
 | Burger King | CP13–CP24 | `burgerking-aguilas-uber` |
 | VIPS | CP25–CP36 | `vips-las-torres-uber` |
 | Chili's | CP37–CP48 | `chilis-aeropuerto-t1-uber` |

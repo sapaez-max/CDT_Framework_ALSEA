@@ -9,6 +9,7 @@ import {
   buildAutomatedItemName,
   chooseRotatingItem,
   recordItemSelection,
+  replaceAutomationSuffix,
 } from './item-selection-history';
 import {
   resolveModifierGroupRelations,
@@ -142,12 +143,16 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
 
   const previousItemName = displayValue(items.rows[selection.itemRow][itemNameColumn]).trim();
   const itemNames = buildAutomatedItemName(previousItemName, request.caseId, executionTimestamp);
+  const previousGroupName = displayValue(groups.rows[selection.groupRow][groupNameColumn]).trim();
+  const groupNames = replaceAutomationSuffix(previousGroupName, request.caseId, executionTimestamp);
   changeCell(items, selection.itemRow, itemNameColumn, itemNames.generatedName, changes);
-  changeCell(groups, selection.groupRow, groupNameColumn, `AUTO_${marker}`, changes);
+  changeCell(groups, selection.groupRow, groupNameColumn, groupNames.generatedName, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
 
-  selection.modifierRows.forEach((row, index) => {
-    changeCell(modifiers, row, modifierNameColumn, `AUTO_${marker}_MOD_${index + 1}`, changes);
+  selection.modifierRows.forEach(row => {
+    const previousModifierName = displayValue(modifiers.rows[row][modifierNameColumn]).trim();
+    const modifierNames = replaceAutomationSuffix(previousModifierName, request.caseId, executionTimestamp);
+    changeCell(modifiers, row, modifierNameColumn, modifierNames.generatedName, changes);
   });
 
   const outputPath = inputPath;

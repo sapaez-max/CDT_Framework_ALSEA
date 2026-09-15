@@ -26,7 +26,7 @@ data/
 
 | Dataset | País | Marca | Sucursal | Agregador | Tipo de menú | Rango CP marca |
 | --- | --- | --- | --- | --- | --- | --- |
-| `starbucks-wtc-rappi` | MEXICO | STARBUCKS | STARBUCKS WTC - 38109 | RAPPI | Delivery BIS | CP1-CP12 |
+| `starbucks-wtc-uber` | MEXICO | STARBUCKS | STARBUCKS WTC - 38109 | UBER EATS | Delivery BIS | CP1-CP12 |
 | `burgerking-aguilas-uber` | MEXICO | BURGER KING | Burger King - Aguilas - 12513 | UBER EATS | Delivery | CP13-CP24 |
 | `vips-las-torres-uber` | MEXICO | VIPS | Vips - Las torres 81099 | UBER EATS | Delivery | CP25-CP36 |
 | `chilis-aeropuerto-t1-uber` | MEXICO | CHILIS | CHILIS AEROPUERTO T1 - 1075 | UBER EATS | Delivery Codisys | CP37-CP48 |

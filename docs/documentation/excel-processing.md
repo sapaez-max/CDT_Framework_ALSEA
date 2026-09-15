@@ -54,11 +54,12 @@ Los candidatos se deduplican por item y se eligen mediante una rotación estable
 La copia editada:
 
 - Normaliza el nombre comercial del item eliminando sufijos automáticos anteriores y agrega una única marca con formato `AUTO_<CP>_YYYYMMDD_HHmmss`.
-- Cambia el nombre comercial y la descripción del grupo modificador.
-- Cambia el nombre comercial de sus dos primeros modificadores relacionados.
+- Conserva el nombre comercial base del grupo modificador, retira un sufijo automático final anterior si existe y agrega el sufijo actual `_AUTO_<CP>_YYYYMMDD_HHmmss`.
+- Conserva el nombre comercial base de sus dos primeros modificadores relacionados, retira un sufijo automático final anterior si existe y agrega el sufijo actual `_AUTO_<CP>_YYYYMMDD_HHmmss`.
+- Cambia la descripción del grupo modificador.
 - Mantiene órdenes, posiciones y columnas de agregadores sin cambios.
 
-Los datos dinámicos usan un timestamp local `YYYYMMDD_HHmmss`, generado una sola vez mediante `formatExecutionTimestamp`. Por ejemplo, `Latte_20260911_20260914_163133` se normaliza antes de producir `Latte_AUTO_CP2_20260914_204848`. Los escenarios posteriores recuperan los valores reales del artefacto; no construyen otro timestamp.
+Los datos dinámicos usan un timestamp local `YYYYMMDD_HHmmss`, generado una sola vez mediante `formatExecutionTimestamp`. Por ejemplo, `Latte_20260911_20260914_163133` se normaliza antes de producir `Latte_AUTO_CP2_20260914_204848`, y `Adicionales_AUTO_CP2_20260910_101530` se limpia antes de producir `Adicionales_AUTO_CP2_20260914_204848`. Los escenarios posteriores recuperan los valores reales del artefacto; no construyen otro timestamp.
 
 ## Integridad
 

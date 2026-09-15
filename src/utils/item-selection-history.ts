@@ -18,6 +18,21 @@ const markedSuffixPattern = /_AUTO_CP\d+_\d{8}_\d{6}$/i;
 const timestampSuffixPattern = /_\d{8}_\d{6}$/;
 const legacyDateSuffixPattern = /_\d{8}$/;
 
+export function replaceAutomationSuffix(
+  commercialName: string,
+  caseId: string,
+  executionTimestamp: string,
+): { baseName: string; generatedName: string } {
+  const original = commercialName.trim();
+  const suffixPattern = new RegExp(`_AUTO_${escapeRegExp(caseId)}_\\d{8}_\\d{6}$`, 'i');
+  const baseName = original.replace(suffixPattern, '').trim() || original;
+
+  return {
+    baseName,
+    generatedName: `${baseName}_AUTO_${caseId}_${executionTimestamp}`,
+  };
+}
+
 export function normalizeAutomatedItemName(value: string): string {
   const original = value.trim();
   let normalized = original;
@@ -123,4 +138,8 @@ function historyFile(datasetId: string): string {
 
 function safeSegment(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

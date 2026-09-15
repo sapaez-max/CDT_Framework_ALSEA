@@ -74,7 +74,8 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
 
   const groupId = canonicalId(groups.rows[editedGroupRow][groupIdColumn]);
   const groupName = displayValue(groups.rows[editedGroupRow][groupNameColumn]);
-  const modifierMarker = `${groupName}_MOD_`;
+  const automationSuffix = groupName.match(/_AUTO_CP\d+_\d{8}_\d{6}$/i)?.[0];
+  const legacyModifierMarker = `${groupName}_MOD_`;
   const relations = resolveModifierGroupRelations({
     baseGroups: [{
       id: groupId,
@@ -87,7 +88,7 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
       .filter(({ row, index }) =>
         index > 0
         && canonicalId(row[modifierGroupColumn]) === groupId
-        && displayValue(row[modifierNameColumn]).startsWith(modifierMarker))
+        && isEditedModifierName(displayValue(row[modifierNameColumn]), automationSuffix, legacyModifierMarker))
       .map(({ row, index }) => ({
         itemId: canonicalId(row[modifierItemColumn]),
         baseGroupId: groupId,
@@ -206,9 +207,19 @@ function uniqueNumbers(values: unknown[]): number[] {
 
 function findLastAutoGroupRow(rows: unknown[][], groupNameColumn: number): number {
   for (let i = rows.length - 1; i >= 1; i--) {
-    if (displayValue(rows[i][groupNameColumn]).startsWith('AUTO_')) return i;
+    const groupName = displayValue(rows[i][groupNameColumn]);
+    if (groupName.startsWith('AUTO_') || /_AUTO_CP\d+_\d{8}_\d{6}$/i.test(groupName)) return i;
   }
   return -1;
+}
+
+function isEditedModifierName(
+  modifierName: string,
+  automationSuffix: string | undefined,
+  legacyModifierMarker: string,
+): boolean {
+  if (automationSuffix) return modifierName.endsWith(automationSuffix);
+  return modifierName.startsWith(legacyModifierMarker);
 }
 
 function normalize(value: unknown): string {

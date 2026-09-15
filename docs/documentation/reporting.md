@@ -12,7 +12,7 @@ Estas rutas no deben versionarse.
 
 ## Flujo funcional
 
-Los diez escenarios implementados adjuntan `Flujo funcional`, una vista en lenguaje de usuario del recorrido ejecutado. Cada nodo muestra `COMPLETADO`, `FALLÓ` o `NO EJECUTADO`. Si un error ocurre fuera de un paso reconocido, el último paso alcanzado se marca como fallido.
+Los doce escenarios implementados adjuntan `Flujo funcional`, una vista en lenguaje de usuario del recorrido ejecutado. Cada nodo muestra `COMPLETADO`, `FALLÓ` o `NO EJECUTADO`. Si un error ocurre fuera de un paso reconocido, el último paso alcanzado se marca como fallido.
 
 La evidencia muestra el recorrido visual y los datos utilizados. La tabla duplicada de resultados por paso no se genera.
 
