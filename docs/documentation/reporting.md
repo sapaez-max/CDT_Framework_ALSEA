@@ -44,7 +44,7 @@ Los Excel se muestran como `<descripción funcional> - <nombre-real.xls|xlsx>`. 
 - `Plantilla esperada para validación en Visor CORE - <archivo>`
 - `Plantilla Excel reordenada - <archivo>`
 
-Los casos que modifican datos adjuntan `Resumen comparativo de cambios en Excel`. Las validaciones del Visor y la actualización de menú adjuntan el JSON obtenido y comparaciones legibles cuando corresponda.
+Los casos que modifican datos adjuntan `Resumen comparativo de cambios en Excel`. Las validaciones del Visor y la actualización de menú adjuntan el JSON obtenido y comparaciones legibles cuando corresponda. S06 adjunta `Comparación de datos esperados y obtenidos en el JSON`, con una fila por entidad para comparar identificador, nombre y posición, además del orden completo de los modificadores. Esta comparación también determina el resultado del test: cualquier fila con `No coincide` provoca el fallo del caso.
 
 ## Evidencias de Gmail
 

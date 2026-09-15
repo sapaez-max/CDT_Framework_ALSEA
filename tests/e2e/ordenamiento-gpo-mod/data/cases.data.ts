@@ -38,7 +38,7 @@ export type TemplateEditCase = CaseMetadata & {
   scenario: 'editTemplate';
   sourceCaseId: CaseId;
   aggregator: string;
-  selectionStrategy: 'first-eligible-group';
+  selectionStrategy: 'rotating-eligible-item';
 };
 
 export type FilterLoadCase = FilterLoadFormData & CaseMetadata & {
@@ -191,7 +191,7 @@ const scenarioDefaults = {
     selectDate: false,
   },
   editTemplate: {
-    selectionStrategy: 'first-eligible-group' as const,
+    selectionStrategy: 'rotating-eligible-item' as const,
   },
   uploadFilters: {
     loadType: 'Nuevo menú',
@@ -260,7 +260,7 @@ export const uploadFiltersCases: FilterLoadCase[] = enabledDatasets('uploadFilte
       versionMenu: scenarioDefaults.uploadFilters.versionMenu,
       description: `Carga de filtros ${caseMetadata.id}`,
       expectedMessage: expectedFilterLoadMessage,
-      ...filterEmailExpectations(dataset, brand.label),
+      ...uploadFilterEmailExpectations(dataset, brand.label),
     };
   });
 
@@ -493,12 +493,23 @@ function buildReorderCases<S extends ReorderScenario>(
         displayAggregator(dataset.aggregator),
         dataset.branch.code,
       ),
-      ...filterEmailExpectations(dataset, brand.label),
+      ...reorderFilterEmailExpectations(dataset, brand.label),
     };
   });
 }
 
-function filterEmailExpectations(
+function uploadFilterEmailExpectations(
+  dataset: TestDataset,
+  brand: string,
+): Pick<FilterLoadCase, 'expectedEmailSubject' | 'expectedEmailBodyFields'> {
+  if (!dataset.overrides?.uploadFilters?.validateEmail) return {};
+  return {
+    expectedEmailSubject: expectedFilterLoadEmailSubject,
+    expectedEmailBodyFields: filterEmailBodyFields(dataset, brand),
+  };
+}
+
+function reorderFilterEmailExpectations(
   dataset: TestDataset,
   brand: string,
 ): Pick<ReorderCaseBase, 'expectedFilterEmailSubject' | 'expectedFilterEmailBodyFields'> {

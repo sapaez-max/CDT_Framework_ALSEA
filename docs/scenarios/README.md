@@ -80,8 +80,8 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 1. Localizar el Excel producido por S01 para el mismo dataset.
 2. Crear una copia en los artefactos del caso actual.
 3. Comprobar las hojas necesarias: `Items`, `Categorias`, `GrupoModificador` y `Modificadores`.
-4. Seleccionar un item con categoría no vacía, un grupo habilitado para el agregador y al menos dos modificadores relacionados.
-5. Agregar el identificador temporal de la ejecución al nombre comercial del item.
+4. Construir la lista de items elegibles y seleccionar el siguiente mediante una rotación estable por dataset, priorizando los que todavía no tienen una marca automática.
+5. Eliminar los sufijos automáticos anteriores del nombre comercial y agregar una única marca `AUTO_<CP>_<timestamp>`.
 6. Cambiar el nombre comercial y la descripción del grupo seleccionado.
 7. Cambiar el nombre comercial de los dos modificadores seleccionados.
 8. Guardar el item, la categoría, el grupo y los modificadores elegidos para las validaciones posteriores.
@@ -104,9 +104,9 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 4. Elegir `Nuevo menú` y `Versionar menú = No`.
 5. Adjuntar la plantilla e ingresar la descripción del caso.
 6. Enviar la carga y esperar su resultado.
-7. Cuando el dataset lo requiera, validar también el correo de procesamiento.
+7. Cuando el dataset lo requiera, validar también el correo de procesamiento. Si la solicitud HTTP queda pendiente después de iniciarse, continuar con el correo como confirmación final.
 
-**Validaciones principales:** el portal acepta el archivo y la respuesta funcional indica que la carga fue enviada o procesada correctamente.
+**Validaciones principales:** la solicitud de carga fue enviada. Cuando el endpoint responde, debe hacerlo correctamente; si queda pendiente y el dataset exige validación por correo, el correo satisfactorio constituye la confirmación final del procesamiento.
 
 **Salida:** plantilla enviada y evidencias disponibles de la carga y del correo.
 
@@ -161,9 +161,9 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 3. Obtener el JSON publicado.
 4. Comparar item, grupo, modificadores y órdenes contra la plantilla esperada.
 
-**Validaciones principales:** aparecen los identificadores y nombres esperados, los modificadores conservan el orden definido y no faltan entidades requeridas.
+**Validaciones principales:** cada item, grupo y modificador debe coincidir en el mismo nodo JSON con su identificador, nombre y posición esperados. Para el grupo se acepta el identificador base del Excel o ese mismo valor seguido de un sufijo delimitado por `_`; items y modificadores mantienen coincidencia exacta. Los modificadores deben pertenecer al grupo seleccionado y conservar el orden definido. Cualquier fila con resultado `No coincide` hace fallar el caso.
 
-**Salida:** JSON publicado del menú y plantilla usada como referencia.
+**Salida:** JSON publicado del menú, plantilla usada como referencia y evidencia `Comparación de datos esperados y obtenidos en el JSON` con una fila consolidada por item, grupo y modificador, más una comparación independiente del orden.
 
 ## S07 — Reordenar grupos modificadores
 

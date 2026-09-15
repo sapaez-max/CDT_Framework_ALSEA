@@ -162,7 +162,12 @@ async function reorderWorkflow(
       versionMenu: caseData.versionMenu,
       description: caseData.filterDescription,
       expectedMessage: caseData.expectedFilterMessage,
-    }, edited.outputPath);
+    }, edited.outputPath, {
+      allowPendingResponse: Boolean(
+        caseData.expectedFilterEmailSubject
+        && caseData.expectedFilterEmailBodyFields,
+      ),
+    });
 
     if (baseline && caseData.expectedFilterEmailSubject && caseData.expectedFilterEmailBodyFields) {
       const email = await gmail.waitForCase(baseline, {

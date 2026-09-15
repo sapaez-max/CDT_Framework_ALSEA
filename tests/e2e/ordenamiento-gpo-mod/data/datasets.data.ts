@@ -104,7 +104,7 @@ const implementedScenarios = [
 
 const configuredTestDatasets = [
   {
-    id: 'starbucks-wtc-rappi',
+    id: 'starbucks-wtc-uber',
     enabled: true,
     country: 'MEXICO',
     brandId: 'starbucks',
@@ -113,7 +113,7 @@ const configuredTestDatasets = [
       name: 'STARBUCKS WTC',
       label: 'STARBUCKS WTC - 38109',
     },
-    aggregator: 'RAPPI',
+    aggregator: 'UBER EATS',
     menuType: 'Delivery BIS',
     enabledScenarios: implementedScenarios,
     overrides: {

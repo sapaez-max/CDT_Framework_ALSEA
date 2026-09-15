@@ -50,7 +50,12 @@ export async function uploadFiltersWorkflow(
 
   await test.step('Cargar la plantilla de filtros con los datos seleccionados', async () => {
     await menuPage.openFilterLoad();
-    await menuPage.loadFilters(caseData, prepared.targetPath);
+    await menuPage.loadFilters(caseData, prepared.targetPath, {
+      allowPendingResponse: Boolean(
+        caseData.expectedEmailSubject
+        && caseData.expectedEmailBodyFields,
+      ),
+    });
   });
 
   if (caseData.expectedEmailSubject && caseData.expectedEmailBodyFields && baseline && gmail) {

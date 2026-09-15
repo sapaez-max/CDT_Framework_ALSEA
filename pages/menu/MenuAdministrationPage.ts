@@ -54,6 +54,10 @@ export type FilterLoadFormData = {
   expectedMessage: RegExp;
 };
 
+export type FilterLoadOptions = {
+  allowPendingResponse?: boolean;
+};
+
 export class MenuAdministrationPage extends BasePage {
   constructor(page: Page) {
     super(page);
@@ -154,7 +158,11 @@ export class MenuAdministrationPage extends BasePage {
     };
   }
 
-  async loadFilters(caseData: FilterLoadFormData, filePath: string): Promise<void> {
+  async loadFilters(
+    caseData: FilterLoadFormData,
+    filePath: string,
+    options: FilterLoadOptions = {},
+  ): Promise<void> {
     await this.selectField(/Pa[ií]s|Pa[ií]ses/i, caseData.country);
     await this.selectField(/Marca|Marcas/i, caseData.brand);
 
@@ -175,19 +183,30 @@ export class MenuAdministrationPage extends BasePage {
 
     const button = this.page.getByRole('button', { name: /Cargar filtros/i }).first();
     await expect(button, 'Debe estar disponible el boton Cargar filtros').toBeEnabled();
-    const [response] = await Promise.all([
-      this.page.waitForResponse((candidate) =>
-        candidate.request().method() === 'POST'
-        && /\/menudelivery\/filters\b/i.test(candidate.url()),
-        { timeout: FILE_OPERATION_TIMEOUT_MS },
-      ),
+
+    const matchesFilterLoad = (candidate: { method(): string; url(): string }): boolean =>
+      candidate.method() === 'POST'
+      && /\/menudelivery\/filters\b/i.test(candidate.url());
+    const responsePromise = this.page.waitForResponse(
+      candidate => matchesFilterLoad(candidate.request()),
+      { timeout: FILE_OPERATION_TIMEOUT_MS },
+    ).catch((error: Error) => {
+      if (options.allowPendingResponse && error.name === 'TimeoutError') return undefined;
+      throw error;
+    });
+
+    await Promise.all([
+      this.page.waitForRequest(matchesFilterLoad, { timeout: FILE_OPERATION_TIMEOUT_MS }),
       button.click(),
     ]);
 
-    expect(
-      response.ok(),
-      `El servicio de carga de filtros debe responder correctamente. Status: ${response.status()}`,
-    ).toBe(true);
+    const response = await responsePromise;
+    if (response) {
+      expect(
+        response.ok(),
+        `El servicio de carga de filtros debe responder correctamente. Status: ${response.status()}`,
+      ).toBe(true);
+    }
 
     const notification = this.visibleNotification(caseData.expectedMessage);
     if (await notification.count()) {

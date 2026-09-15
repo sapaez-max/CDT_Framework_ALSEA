@@ -5,6 +5,11 @@ import {
   type ArtifactScope,
 } from './case-artifact-manager';
 import { formatExecutionTimestamp } from './execution-timestamp';
+import {
+  buildAutomatedItemName,
+  chooseRotatingItem,
+  recordItemSelection,
+} from './item-selection-history';
 
 export type TemplateEditRequest = {
   caseId: string;
@@ -86,6 +91,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     groups,
     modifiers,
     itemColumn,
+    itemNameColumn,
     categoryItemColumn,
     categoryNameColumn,
     groupIdColumn,
@@ -94,6 +100,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     groupAggregatorColumn,
     modifierAggregatorColumn,
     request.aggregator,
+    request.artifactScope.datasetId,
   );
   const executionTimestamp = process.env.ALSEA_EXECUTION_TIMESTAMP ?? formatExecutionTimestamp(new Date());
   const marker = `${request.caseId}_${executionTimestamp}`;
@@ -114,7 +121,8 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   ];
 
   const previousItemName = displayValue(items.rows[selection.itemRow][itemNameColumn]).trim();
-  changeCell(items, selection.itemRow, itemNameColumn, `${previousItemName}_${executionTimestamp}`, changes);
+  const itemNames = buildAutomatedItemName(previousItemName, request.caseId, executionTimestamp);
+  changeCell(items, selection.itemRow, itemNameColumn, itemNames.generatedName, changes);
   changeCell(groups, selection.groupRow, groupNameColumn, `AUTO_${marker}`, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
 
@@ -126,6 +134,13 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   xlsx.writeFile(workbook, outputPath, { compression: true, cellStyles: true });
 
   verifyEditedTemplate(outputPath, originalSheetNames, originalRowCounts, changes, unchangedCells);
+  recordItemSelection({
+    datasetId: request.artifactScope.datasetId,
+    itemId: canonicalId(selection.itemId),
+    baseItemName: itemNames.baseName,
+    generatedItemName: itemNames.generatedName,
+    selectedAt: executionTimestamp,
+  });
 
   return {
     sourcePath,
@@ -192,6 +207,7 @@ function selectRelatedRows(
   groups: SheetTable,
   modifiers: SheetTable,
   itemColumn: number,
+  itemNameColumn: number,
   categoryItemColumn: number,
   categoryNameColumn: number,
   groupIdColumn: number,
@@ -200,8 +216,10 @@ function selectRelatedRows(
   groupAggregatorColumn: number,
   modifierAggregatorColumn: number,
   aggregator: string,
+  datasetId: string,
 ): {
   itemId: unknown;
+  itemName: string;
   itemRow: number;
   categoryName: string;
   groupId: unknown;
@@ -221,6 +239,16 @@ function selectRelatedRows(
       categoryByItem.set(itemId, categoryName);
     }
   }
+
+  const candidates: Array<{
+    itemId: string;
+    itemName: string;
+    itemRow: number;
+    categoryName: string;
+    groupId: unknown;
+    groupRow: number;
+    modifierRows: number[];
+  }> = [];
 
   for (let groupRow = 1; groupRow < groups.rows.length; groupRow += 1) {
     const groupId = groups.rows[groupRow][groupIdColumn];
@@ -248,22 +276,26 @@ function selectRelatedRows(
         .map(({ index }) => index);
       if (relatedModifierRows.length < 2) continue;
 
-      return {
+      candidates.push({
         itemId,
+        itemName: displayValue(items.rows[itemRow][itemNameColumn]).trim(),
         itemRow,
         categoryName,
         groupId,
         groupRow,
         modifierRows: relatedModifierRows.slice(0, 2),
-      };
+      });
     }
   }
 
-  throw new Error(
-    `No se encontro un item que exista en Items, tenga una Categoria no vacia y este relacionado con un grupo modificador y al menos dos modificadores habilitados para ${aggregator}.`,
-  );
-}
+  if (candidates.length === 0) {
+    throw new Error(
+      `No se encontro un item que exista en Items, tenga una Categoria no vacia y este relacionado con un grupo modificador y al menos dos modificadores habilitados para ${aggregator}.`,
+    );
+  }
 
+  return chooseRotatingItem(candidates, datasetId);
+}
 function isEnabled(value: unknown): boolean {
   return displayValue(value).trim() === '*';
 }

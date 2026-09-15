@@ -55,8 +55,7 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   const modifierNameColumn = requiredColumn(modifiers, ['Nombre Comercial Modificador']);
   const modifierOrderColumn = requiredColumn(modifiers, ['Orden', 'Posicion']);
 
-  const editedGroupRow = groups.rows.findIndex((row, index) =>
-    index > 0 && displayValue(row[groupNameColumn]).startsWith('AUTO_'));
+  const editedGroupRow = findLastAutoGroupRow(groups.rows, groupNameColumn);
 
   if (editedGroupRow < 0) {
     throw new Error(`No se encontro un grupo modificador editado con marcador AUTO_ en ${inputPath}.`);
@@ -161,6 +160,13 @@ function uniqueNumbers(values: unknown[]): number[] {
     .filter(value => Number.isFinite(value));
 
   return [...new Set(numbers)];
+}
+
+function findLastAutoGroupRow(rows: unknown[][], groupNameColumn: number): number {
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (displayValue(rows[i][groupNameColumn]).startsWith('AUTO_')) return i;
+  }
+  return -1;
 }
 
 function normalize(value: unknown): string {

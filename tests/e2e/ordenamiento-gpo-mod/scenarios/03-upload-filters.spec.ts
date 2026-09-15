@@ -12,6 +12,13 @@ for (const caseData of uploadFiltersCases) {
         test.describe.configure({ timeout: env.gmail.pollTimeoutMs + 120_000 });
       }
       test(`${caseData.id} - ${caseData.title}`, async ({ page, gmailClient }, testInfo) => {
+        if (caseData.expectedEmailSubject) {
+          test.setTimeout(
+            env.gmail.pollTimeoutMs
+            + env.fileOperationTimeoutMs
+            + 120_000,
+          );
+        }
         await uploadFiltersWorkflow(page, caseData, testInfo, gmailClient);
       });
     },

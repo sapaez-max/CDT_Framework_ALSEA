@@ -271,7 +271,12 @@ async function existingMenuWorkflow(
       versionMenu: caseData.versionMenu,
       description: `${caseData.filterDescription} ${executionIdentifier}`,
       expectedMessage: caseData.expectedFilterMessage,
-    }, edited.outputPath);
+    }, edited.outputPath, {
+      allowPendingResponse: Boolean(
+        caseData.expectedFilterEmailSubject
+        && caseData.expectedFilterEmailBodyFields,
+      ),
+    });
 
     if (!caseData.expectedFilterEmailSubject || !caseData.expectedFilterEmailBodyFields) {
       throw new Error(`${caseData.id} requiere la configuracion del correo de carga de filtros.`);

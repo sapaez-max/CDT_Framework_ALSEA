@@ -1,7 +1,25 @@
 import { expect, type Page, type TestInfo } from '@fixtures/base.fixture';
 import { CoreViewerPage } from '@pages/menu/CoreViewerPage';
-import type { CoreViewerTemplateExpectation } from '@utils/core-viewer-template';
+import {
+  buildJsonComparisonHtml,
+  type JsonComparisonRow,
+  type JsonOrderComparison,
+} from '@src/reporting/json-comparison';
+import type {
+  CoreViewerModifierExpectation,
+  CoreViewerTemplateExpectation,
+} from '@utils/core-viewer-template';
 import type { JsonValidationCase } from '../data/cases.data';
+
+type ComparedModifier = {
+  expectation: CoreViewerModifierExpectation;
+  entityObject?: Record<string, unknown>;
+};
+
+type JsonContentComparison = {
+  rows: JsonComparisonRow[];
+  modifierOrder: JsonOrderComparison;
+};
 
 export async function validatePublishedMenuJson(
   page: Page,
@@ -14,67 +32,148 @@ export async function validatePublishedMenuJson(
   await visor.applyFilters(caseData);
 
   const jsonText = await visor.openTemplateJson(expectation);
-  await attachJsonEvidence(testInfo, caseData.id, jsonText);
-  validateJsonContent(jsonText, expectation);
+  await attachJsonEvidence(testInfo, jsonText);
+
+  const comparison = compareJsonContent(jsonText, expectation);
+  await attachJsonComparison(testInfo, caseData, expectation, comparison);
+  validateJsonContent(comparison);
 }
 
-function validateJsonContent(jsonText: string, expectation: CoreViewerTemplateExpectation): void {
-  expect(jsonText, `El JSON debe contener el item ${expectation.itemId}`).toContain(expectation.itemId);
-  expect(jsonText, `El JSON debe contener el nombre del item ${expectation.itemName}`).toContain(expectation.itemName);
-  expect(jsonText, `El JSON debe contener el grupo modificador ${expectation.groupId}`).toContain(expectation.groupId);
-  expect(jsonText, `El JSON debe contener el nombre del grupo ${expectation.groupName}`).toContain(expectation.groupName);
-
-  for (const modifier of expectation.modifiers) {
-    expect(jsonText, `El JSON debe contener el modificador ${modifier.id}`).toContain(modifier.id);
-    expect(jsonText, `El JSON debe contener el nombre del modificador ${modifier.name}`).toContain(modifier.name);
-  }
-
-  const modifierPositions = expectation.modifiers.map(modifier => jsonText.indexOf(modifier.name));
-  expect(
-    modifierPositions.every(position => position >= 0),
-    `Todos los modificadores esperados deben existir en el JSON: ${expectation.modifiers.map(item => item.name).join(', ')}`,
-  ).toBe(true);
-  expect(
-    modifierPositions,
-    'Los modificadores deben conservar en el JSON el orden definido en la plantilla',
-  ).toEqual([...modifierPositions].sort((left, right) => left - right));
-
+function compareJsonContent(
+  jsonText: string,
+  expectation: CoreViewerTemplateExpectation,
+): JsonContentComparison {
   const parsedJson = parseJson(jsonText);
   const allObjects = collectObjects(parsedJson);
-  const groupObjects = allObjects.filter(candidate =>
-    objectContains(candidate, expectation.groupId) || objectContains(candidate, expectation.groupName));
-  expect(
-    groupObjects.length,
-    `Debe existir un nodo JSON para el grupo ${expectation.groupId} - ${expectation.groupName}`,
-  ).toBeGreaterThan(0);
+  const itemObject = findObjectByIdentifier(allObjects, expectation.itemId, /^(itemId|id)$/i);
+  const itemScope = itemObject ? collectObjects(itemObject) : [];
 
-  assertOrderIsExposed(groupObjects, expectation.groupOrder, `grupo ${expectation.groupId}`);
+  const groupObject = findObjectByIdentifier(
+    itemScope,
+    expectation.groupId,
+    /^(modifierGroupId|groupModifierId|groupId|id)$/i,
+    true,
+  );
+  const groupScope = groupObject ? collectObjects(groupObject) : [];
 
-  for (const modifier of expectation.modifiers) {
-    const modifierObjects = allObjects.filter(candidate =>
-      objectContains(candidate, modifier.id) || objectContains(candidate, modifier.name));
-    expect(
-      modifierObjects.length,
-      `Debe existir un nodo JSON para el modificador ${modifier.id} - ${modifier.name}`,
-    ).toBeGreaterThan(0);
-    assertOrderIsExposed(modifierObjects, modifier.order, `modificador ${modifier.id}`);
-  }
+  const modifiers: ComparedModifier[] = expectation.modifiers.map(modifier => ({
+    expectation: modifier,
+    entityObject: findObjectByIdentifier(groupScope, modifier.id, /^(modifierId|id)$/i),
+  }));
+
+  const expectedModifierOrder = expectation.modifiers.map(modifier => modifier.name);
+  const actualModifierOrder = modifiers
+    .map(modifier => ({
+      name: scalarValue(modifier.entityObject, /^(name|nombre|nombreComercial)$/i),
+      position: firstOrder(modifier.entityObject),
+    }))
+    .filter((modifier): modifier is { name: string; position: number } =>
+      modifier.name !== undefined && modifier.position !== undefined)
+    .sort((left, right) => left.position - right.position)
+    .map(modifier => modifier.name);
+
+  const modifierOrder: JsonOrderComparison = {
+    expected: expectedModifierOrder.join(' → '),
+    actual: actualModifierOrder.length > 0 ? actualModifierOrder.join(' → ') : 'No encontrado',
+    passed: arraysEqual(actualModifierOrder, expectedModifierOrder),
+  };
+
+  return {
+    rows: [
+      entityRow(
+        'Item',
+        expectation.itemId,
+        expectation.itemName,
+        undefined,
+        itemObject,
+        /^(itemId|id)$/i,
+      ),
+      entityRow(
+        'Grupo modificador',
+        expectation.groupId,
+        expectation.groupName,
+        expectation.groupOrder,
+        groupObject,
+        /^(modifierGroupId|groupModifierId|groupId|id)$/i,
+      ),
+      ...modifiers.map(modifier => entityRow(
+        'Modificador',
+        modifier.expectation.id,
+        modifier.expectation.name,
+        modifier.expectation.order,
+        modifier.entityObject,
+        /^(modifierId|id)$/i,
+      )),
+    ],
+    modifierOrder,
+  };
 }
 
-function assertOrderIsExposed(objects: Record<string, unknown>[], expectedOrder: number, label: string): void {
-  const exposedOrders = objects
+function validateJsonContent(comparison: JsonContentComparison): void {
+  for (const row of comparison.rows) {
+    expect(
+      row.passed,
+      [
+        `${row.entity} no coincide con la plantilla.`,
+        `Identificador esperado: ${row.expectedIdentifier}.`,
+        `Identificador obtenido: ${row.actualIdentifier}.`,
+        `Nombre esperado: ${row.expectedName}.`,
+        `Nombre obtenido: ${row.actualName}.`,
+        `Posición esperada: ${row.expectedPosition}.`,
+        `Posición obtenida: ${row.actualPosition}.`,
+      ].join(' '),
+    ).toBe(true);
+  }
+
+  expect(
+    comparison.modifierOrder.passed,
+    [
+      'El orden de los modificadores no coincide con la plantilla.',
+      `Esperado: ${comparison.modifierOrder.expected}.`,
+      `Obtenido: ${comparison.modifierOrder.actual}.`,
+    ].join(' '),
+  ).toBe(true);
+}
+
+function entityRow(
+  entity: string,
+  expectedIdentifier: string,
+  expectedName: string,
+  expectedPosition: number | undefined,
+  object: Record<string, unknown> | undefined,
+  identifierPattern: RegExp,
+  allowIdentifierSuffix = false,
+): JsonComparisonRow {
+  const actualIdentifier = scalarValue(object, identifierPattern)
+    ?? matchingScalarValue(object, expectedIdentifier, allowIdentifierSuffix);
+  const actualName = scalarValue(object, /^(name|nombre|nombreComercial)$/i);
+  const actualPositions = exposedOrders(object ? [object] : []);
+  const positionApplies = expectedPosition !== undefined;
+
+  return {
+    entity,
+    expectedIdentifier,
+    actualIdentifier: actualIdentifier ?? 'No encontrado',
+    expectedName,
+    actualName: actualName ?? 'No encontrado',
+    expectedPosition: positionApplies ? String(expectedPosition) : 'No aplica',
+    actualPosition: positionApplies
+      ? (actualPositions.length > 0 ? [...new Set(actualPositions)].join(', ') : 'No encontrado')
+      : 'No aplica',
+    passed: identifierMatches(actualIdentifier, expectedIdentifier, allowIdentifierSuffix)
+      && actualName === expectedName
+      && (!positionApplies || actualPositions.includes(expectedPosition)),
+  };
+}
+
+function firstOrder(object: Record<string, unknown> | undefined): number | undefined {
+  return object ? exposedOrders([object])[0] : undefined;
+}
+
+function exposedOrders(objects: Record<string, unknown>[]): number[] {
+  return objects
     .flatMap(orderValues)
     .filter(value => Number.isFinite(value));
-
-  expect(
-    exposedOrders.length,
-    `El JSON debe exponer un campo de orden/posicion para ${label}`,
-  ).toBeGreaterThan(0);
-
-  expect(
-    exposedOrders,
-    `El JSON debe exponer el orden ${expectedOrder} para ${label}`,
-  ).toContain(expectedOrder);
 }
 
 function orderValues(value: unknown): number[] {
@@ -88,8 +187,54 @@ function orderValues(value: unknown): number[] {
     .filter(value => Number.isFinite(value));
 }
 
-function objectContains(value: Record<string, unknown>, expected: string): boolean {
-  return JSON.stringify(value).includes(expected);
+function findObjectByIdentifier(
+  objects: Record<string, unknown>[],
+  expected: string,
+  keyPattern: RegExp,
+  allowSuffix = false,
+): Record<string, unknown> | undefined {
+  const keyedMatch = objects.find(candidate => Object.entries(candidate).some(([key, value]) =>
+    keyPattern.test(key) && isScalar(value)
+      && identifierMatches(String(value), expected, allowSuffix)));
+  return keyedMatch ?? objects.find(candidate =>
+    matchingScalarValue(candidate, expected, allowSuffix) !== undefined);
+}
+
+function matchingScalarValue(
+  object: Record<string, unknown> | undefined,
+  expected: string,
+  allowSuffix = false,
+): string | undefined {
+  if (!object) return undefined;
+  const value = Object.values(object).find(candidate =>
+    isScalar(candidate) && identifierMatches(String(candidate), expected, allowSuffix));
+  return value === undefined ? undefined : String(value);
+}
+
+function identifierMatches(
+  actual: string | undefined,
+  expected: string,
+  allowSuffix: boolean,
+): boolean {
+  if (actual === undefined) return false;
+  return actual === expected || (allowSuffix && actual.startsWith(expected + '_'));
+}
+function scalarValue(
+  object: Record<string, unknown> | undefined,
+  keyPattern: RegExp,
+): string | undefined {
+  if (!object) return undefined;
+  const entry = Object.entries(object).find(([key, value]) => keyPattern.test(key) && isScalar(value));
+  return entry ? String(entry[1]) : undefined;
+}
+
+function isScalar(value: unknown): value is string | number | boolean {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function arraysEqual(actual: string[], expected: string[]): boolean {
+  return actual.length === expected.length
+    && actual.every((value, index) => value === expected[index]);
 }
 
 function parseJson(jsonText: string): unknown {
@@ -116,7 +261,32 @@ function collectObjects(value: unknown): Record<string, unknown>[] {
   ];
 }
 
-async function attachJsonEvidence(testInfo: TestInfo, caseId: string, jsonText: string): Promise<void> {
+async function attachJsonComparison(
+  testInfo: TestInfo,
+  caseData: JsonValidationCase,
+  expectation: CoreViewerTemplateExpectation,
+  comparison: JsonContentComparison,
+): Promise<void> {
+  await testInfo.attach('Comparación de datos esperados y obtenidos en el JSON', {
+    body: Buffer.from(buildJsonComparisonHtml({
+      caseId: caseData.id,
+      title: caseData.title,
+      context: {
+        country: caseData.country,
+        brand: caseData.brand,
+        branch: caseData.branch,
+        aggregator: caseData.aggregator,
+        menuType: caseData.menuType,
+      },
+      sourceFile: expectation.inputPath,
+      rows: comparison.rows,
+      modifierOrder: comparison.modifierOrder,
+    }), 'utf8'),
+    contentType: 'text/html',
+  });
+}
+
+async function attachJsonEvidence(testInfo: TestInfo, jsonText: string): Promise<void> {
   await testInfo.attach('JSON publicado del menú', {
     body: Buffer.from(jsonText, 'utf8'),
     contentType: 'application/json',

@@ -18,16 +18,18 @@ La edición automática selecciona un item que cumpla todas estas condiciones:
 
 Según el formato de la marca, la categoría se obtiene de las columnas `Categoria` o `Nombre Categoria`. El item y su categoría se conservan para las validaciones posteriores en Visor CORE.
 
+Los candidatos se deduplican por item y se eligen mediante una rotación estable por dataset. Se priorizan los productos que todavía no contienen un sufijo generado por la automatización. El último item utilizado se conserva internamente en `artifacts/state/item-selection/<dataset>.json`; esta metadata no se adjunta al reporte y se registra únicamente después de verificar el Excel editado. Para reiniciar la rotación de un dataset se elimina solamente su archivo de historial; la siguiente ejecución comienza por el primer candidato elegible.
+
 ## Cambios del escenario de edición
 
 La copia editada:
 
-- Agrega al nombre comercial del item seleccionado el timestamp de la ejecución.
+- Normaliza el nombre comercial del item eliminando sufijos automáticos anteriores y agrega una única marca con formato `AUTO_<CP>_YYYYMMDD_HHmmss`.
 - Cambia el nombre comercial y la descripción del grupo modificador.
 - Cambia el nombre comercial de sus dos primeros modificadores relacionados.
 - Mantiene órdenes, posiciones y columnas de agregadores sin cambios.
 
-Los datos dinámicos usan un timestamp local `YYYYMMDD_HHmmss`, generado una sola vez mediante `formatExecutionTimestamp`. Los escenarios posteriores recuperan los valores reales del artefacto; no construyen otro timestamp.
+Los datos dinámicos usan un timestamp local `YYYYMMDD_HHmmss`, generado una sola vez mediante `formatExecutionTimestamp`. Por ejemplo, `Latte_20260911_20260914_163133` se normaliza antes de producir `Latte_AUTO_CP2_20260914_204848`. Los escenarios posteriores recuperan los valores reales del artefacto; no construyen otro timestamp.
 
 ## Integridad
 
