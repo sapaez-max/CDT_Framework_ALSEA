@@ -23,9 +23,7 @@ export function replaceAutomationSuffix(
   caseId: string,
   executionTimestamp: string,
 ): { baseName: string; generatedName: string } {
-  const original = commercialName.trim();
-  const suffixPattern = new RegExp(`_AUTO_${escapeRegExp(caseId)}_\\d{8}_\\d{6}$`, 'i');
-  const baseName = original.replace(suffixPattern, '').trim() || original;
+  const baseName = normalizeAutomatedItemName(commercialName);
 
   return {
     baseName,
