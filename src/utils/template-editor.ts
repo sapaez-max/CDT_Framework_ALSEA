@@ -126,6 +126,18 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const executionTimestamp = process.env.ALSEA_EXECUTION_TIMESTAMP ?? formatExecutionTimestamp(new Date());
   const marker = `${request.caseId}_${executionTimestamp}`;
   const changes: CellChange[] = [];
+  const allModifierEditRows: number[] = [];
+  for (const row of selection.modifierRows) {
+    const modId = canonicalId(modifiers.rows[row][modifierIdColumn]);
+    const allRows = findAllModifierRowsById(modifiers, modifierIdColumn, modId);
+    if (allRows.length === 0) {
+      throw new Error(`No se encontro el modifierId ${modId} en la hoja Modificadores.`);
+    }
+    for (const r of allRows) {
+      if (!allModifierEditRows.includes(r)) allModifierEditRows.push(r);
+    }
+  }
+
   const unchangedCells = [
     ...snapshotUnchangedRowCells(
       items,
@@ -137,7 +149,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
       selection.groupRow,
       new Set([groupNameColumn, groupDescriptionColumn]),
     ),
-    ...selection.modifierRows.flatMap(row =>
+    ...allModifierEditRows.flatMap(row =>
       snapshotUnchangedRowCells(modifiers, row, new Set([modifierNameColumn]))),
   ];
 
@@ -149,7 +161,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   changeCell(groups, selection.groupRow, groupNameColumn, groupNames.generatedName, changes);
   changeCell(groups, selection.groupRow, groupDescriptionColumn, `Descripcion automatizada ${marker}`, changes);
 
-  selection.modifierRows.forEach(row => {
+  allModifierEditRows.forEach(row => {
     const previousModifierName = displayValue(modifiers.rows[row][modifierNameColumn]).trim();
     const modifierNames = replaceAutomationSuffix(previousModifierName, request.caseId, executionTimestamp);
     changeCell(modifiers, row, modifierNameColumn, modifierNames.generatedName, changes);
@@ -464,5 +476,19 @@ function displayValue(value: unknown): string {
 
 function hasValue(value: unknown): boolean {
   return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function findAllModifierRowsById(
+  modifiers: SheetTable,
+  modifierIdColumn: number,
+  modifierId: string,
+): number[] {
+  const rows: number[] = [];
+  for (let i = 1; i < modifiers.rows.length; i += 1) {
+    if (canonicalId(modifiers.rows[i][modifierIdColumn]) === modifierId) {
+      rows.push(i);
+    }
+  }
+  return rows;
 }
 

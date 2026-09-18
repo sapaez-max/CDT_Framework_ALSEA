@@ -80,13 +80,13 @@ Ejecutar un escenario dependiente de forma aislada requiere que el Excel de su e
 1. Localizar el Excel producido por S01 para el mismo dataset.
 2. Crear una copia en los artefactos del caso actual.
 3. Comprobar las hojas necesarias: `Items`, `Categorias`, `GrupoModificador` y `Modificadores`.
-4. Seleccionar un item con categoría no vacía, un grupo habilitado para el agregador y al menos dos modificadores relacionados.
+4. Seleccionar un item con categoría no vacía, un grupo habilitado para el agregador y los modificadores relacionados.
 5. Agregar el identificador temporal de la ejecución al nombre comercial del item.
 6. Cambiar el nombre comercial y la descripción del grupo seleccionado.
-7. Cambiar el nombre comercial de los dos modificadores seleccionados.
+7. Cambiar el nombre comercial de todos los modificadores relacionados en todas sus apariciones de la hoja.
 8. Guardar el item, la categoría, el grupo y los modificadores elegidos para las validaciones posteriores.
 
-**Validaciones principales:** se conservan las hojas, su orden y la cantidad de filas; solo cambian las celdas previstas y los órdenes permanecen intactos.
+**Validaciones principales:** se conservan las hojas, su orden y la cantidad de filas; solo cambian las celdas previstas y los órdenes permanecen intactos. Los modificadores se modifican en todas sus filas para que el backend lea el nombre actualizado desde la primera aparición.
 
 **Salida:** plantilla editada y resumen comparativo de los cambios en Excel.
 

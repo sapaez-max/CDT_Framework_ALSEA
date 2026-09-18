@@ -55,7 +55,7 @@ const groupColumns: Column[] = [
 ];
 
 const modifierColumns: Column[] = [
-  { key: 'id', label: 'Modificador ID' },
+  { key: 'id', label: 'Modifier ID' },
   { key: 'name', label: 'Nombre' },
   { key: 'nameBefore', label: 'Nombre anterior' },
   { key: 'nameAfter', label: 'Nombre nuevo' },

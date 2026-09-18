@@ -36,10 +36,10 @@ const flows: Readonly<Record<string, FlowStepDefinition[]>> = {
     step('Recibir el correo y guardar la plantilla Excel', /Esperar correo nuevo y descargar Excel/i),
   ],
   '02-edit-template.spec.ts': [
-    step(
-      'Localizar la plantilla recibida, crear una copia y aplicar los cambios del escenario',
-      /Localizar la plantilla de .+ y editar una copia/i,
-    ),
+    step('Copiar la plantilla del escenario anterior', /Copiar la plantilla del escenario anterior/i),
+    step('Seleccionar item, grupo y modificadores relacionados', /Seleccionar item, grupo y modificadores relacionados/i),
+    step('Modificar nombres de item, grupo y modificadores', /Modificar nombres de item, grupo y modificadores/i),
+    step('Guardar y validar la plantilla editada', /Guardar y validar la plantilla editada/i),
   ],
   '03-upload-filters.spec.ts': [
     step('Acceder al portal con la sesión autorizada', /Acceder al portal con la sesion autorizada/i),
