@@ -871,11 +871,10 @@ function selectItemWithThreeGroups(input: {
       : relatedGroups;
 
     const visuallyStableGroups = visualGroups.filter(group => !/^Adicionales$/i.test(group.name));
+    const minimumGroups = input.minimumGroups ?? 3;
     const selectedGroups = input.includeAllGroups
       ? visualGroups
-      : visuallyStableGroups.length >= 3 ? visuallyStableGroups : visualGroups;
-
-    const minimumGroups = input.minimumGroups ?? 3;
+      : visuallyStableGroups.length >= minimumGroups ? visuallyStableGroups : visualGroups;
     if (selectedGroups.length >= minimumGroups) {
       return {
         itemId,

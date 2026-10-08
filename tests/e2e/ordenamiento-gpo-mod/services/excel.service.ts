@@ -1,7 +1,6 @@
 import { readCoreViewerExpectation } from '@utils/core-viewer-template';
 import {
   caseDownloadDirectory,
-  copyExcelFromCurrentCaseOrPrevious,
   copyExcelFromPreviousCase,
   getLatestExcelForCase,
   type ArtifactScope,
@@ -89,33 +88,21 @@ export class ExcelService {
   }
 
   updateExistingMenu(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
-    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
     return reorderGroupsAndModifiers({
       caseId,
       sourceCaseId,
       aggregator,
       artifactScope: scope,
-      sourceCopy,
       strategy: 'selective-update',
     });
   }
 
   reorderMultipleGroups(caseId: string, sourceCaseId: string, aggregator: string, scope: ArtifactScope) {
-    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
     return reorderGroupsAndModifiers({
       caseId,
       sourceCaseId,
       aggregator,
       artifactScope: scope,
-      sourceCopy,
       strategy: 'multiple-groups',
     });
   }
@@ -127,17 +114,11 @@ export class ExcelService {
     scope: ArtifactScope,
     itemNameSuffix: string,
   ) {
-    const sourceCopy = copyExcelFromCurrentCaseOrPrevious({
-      previousCase: sourceCaseId,
-      currentCase: caseId,
-      scope,
-    });
     return renameItemPreservingOrder({
       caseId,
       sourceCaseId,
       aggregator,
       artifactScope: scope,
-      sourceCopy,
       itemNameSuffix,
     });
   }

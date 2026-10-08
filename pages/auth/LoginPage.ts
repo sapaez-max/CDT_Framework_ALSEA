@@ -20,9 +20,7 @@ export class LoginPage extends BasePage {
 
   async expectAuthenticated(accountName = env.accountDisplayName): Promise<void> {
     const target = new URL(env.login.landingPath, env.baseUrl);
-    await expect(this.page).toHaveURL(
-      url => url.origin === target.origin && url.pathname === target.pathname,
-    );
+    await expect(this.page).toHaveURL(target.href);
 
     const account = env.login.accountSelector
       ? this.page.locator(env.login.accountSelector)

@@ -51,15 +51,7 @@ export async function editTemplateWorkflow(
       descriptionBefore: groupDescription?.previousValue,
       descriptionAfter: groupDescription?.newValue,
     };
-    context.modifiers = result.modifierIds.map((id, index) => {
-      const change = result.changes.filter(candidate =>
-        candidate.field === 'Nombre Comercial Modificador')[index];
-      return {
-        id,
-        nameBefore: change?.previousValue,
-        nameAfter: change?.newValue,
-      };
-    });
+    context.modifiers = result.modifierEdits.map(modifier => ({ ...modifier }));
   });
 
   await test.step('Guardar y validar la plantilla editada', async () => {
@@ -84,7 +76,7 @@ export async function editTemplateWorkflow(
         },
         category: context.category?.name,
         modifierGroups: [{
-          id: result.resolvedGroupId,
+          id: result.groupId,
           nameBefore: result.changes.find(c => c.sheet === 'GrupoModificador' && c.field === 'Nombre Comercial')?.previousValue,
           nameAfter: result.changes.find(c => c.sheet === 'GrupoModificador' && c.field === 'Nombre Comercial')?.newValue,
           descriptionBefore: result.changes.find(c => c.sheet === 'GrupoModificador' && c.field === 'Descripcion')?.previousValue,

@@ -222,6 +222,33 @@ describe('selectEditableRelation', () => {
     const editable = selectEditableRelation(relations, 2);
     expect(editable).toBeUndefined();
   });
+
+  it('elige un subgrupo publicado aunque la relación base tenga suficientes modificadores', () => {
+    const relations = resolveModifierGroupRelations({
+      baseGroups: makeBaseGroups(),
+      modifiers: makeModifiers([
+        { itemId: '20061', baseGroupId: '20061_1', id: 'BASE_A', name: 'Base A', position: 1, rawSubgroups: null, source: { sheet: 'Modificadores', row: 2 } },
+        { itemId: '20061', baseGroupId: '20061_1', id: 'BASE_B', name: 'Base B', position: 2, rawSubgroups: null, source: { sheet: 'Modificadores', row: 3 } },
+        { itemId: '20061', baseGroupId: '20061_1', id: 'PUB_A', name: 'Publicado A', position: 1, rawSubgroups: 'I', source: { sheet: 'Modificadores', row: 4 } },
+        { itemId: '20061', baseGroupId: '20061_1', id: 'PUB_B', name: 'Publicado B', position: 2, rawSubgroups: 'I', source: { sheet: 'Modificadores', row: 5 } },
+      ]),
+      subgroups: makeSubgroups(),
+    });
+
+    const editable = selectEditableRelation(relations, 2, 'I,F');
+    expect(editable?.resolvedGroup.id).toBe('20061_1_I');
+    expect(editable?.modifiers.map(modifier => modifier.id)).toEqual(['PUB_A', 'PUB_B']);
+  });
+
+  it('elige la relación base cuando el grupo no publica subgrupos', () => {
+    const relations = resolveModifierGroupRelations({
+      baseGroups: makeBaseGroups(),
+      modifiers: makeModifiers(),
+      subgroups: makeSubgroups(),
+    });
+
+    expect(selectEditableRelation(relations, 2, null)?.resolvedGroup.id).toBe('20061_1');
+  });
 });
 
 describe('normalizeSubgroupIds', () => {

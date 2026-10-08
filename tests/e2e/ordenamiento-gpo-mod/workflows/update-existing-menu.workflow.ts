@@ -158,6 +158,18 @@ async function existingMenuWorkflow(
       ),
   );
   const { expectation } = edited;
+  if (preservesOrder) {
+    expect(
+      edited.sourcePath,
+      'La recarga de CP11 debe partir del Excel vigente de CP10',
+    ).toBe(sourceState.sourcePath);
+  }
+  if (validatesMultipleGroups) {
+    expect(
+      edited.sourcePath,
+      'El reordenamiento de CP12 debe partir del Excel vigente de CP11',
+    ).toBe(sourceState.sourcePath);
+  }
   const itemChange = 'itemChange' in edited
     ? (edited as PreserveOrderResult).itemChange
     : undefined;
@@ -249,6 +261,8 @@ async function existingMenuWorkflow(
 
   const expectedSnapshot = validatesMultipleGroups
     ? undefined
+    : preservesOrder
+    ? { ...structuredClone(baselineSnapshot), name: expectation.itemName }
     : buildExpectedMenuSnapshotFromTemplate(baselineSnapshot, expectation, {
       itemName: expectation.itemName,
     });

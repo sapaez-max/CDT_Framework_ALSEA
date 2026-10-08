@@ -41,7 +41,7 @@ export type TemplateEditResult = {
   groupId: string;
   subgroupId: string | null;
   resolvedGroupId: string;
-  modifierIds: string[];
+  modifierEdits: Array<{ id: string; nameBefore: string; nameAfter: string }>;
   changes: CellChange[];
 };
 
@@ -85,6 +85,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
   const groupIdColumn = requiredColumn(groups, ['Grupo Modificador']);
   const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
   const groupOrderColumn = requiredColumn(groups, ['Orden', 'Posicion']);
+  const groupSubgroupsColumn = requiredColumn(groups, ['Subgrupos']);
   const modifierItemColumn = requiredColumn(modifiers, ['Item']);
   const modifierGroupColumn = requiredColumn(modifiers, ['Grupo Modificador']);
   const modifierIdColumn = requiredColumn(modifiers, ['Modificador']);
@@ -109,6 +110,7 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     groupIdColumn,
     groupNameColumn,
     groupOrderColumn,
+    groupSubgroupsColumn,
     modifierItemColumn,
     modifierGroupColumn,
     modifierIdColumn,
@@ -189,7 +191,16 @@ export function editDownloadedTemplate(request: TemplateEditRequest): TemplateEd
     groupId: canonicalId(selection.groupId),
     subgroupId: selection.subgroupId,
     resolvedGroupId: selection.resolvedGroupId,
-    modifierIds: selection.modifierRows.map(row => canonicalId(modifiers.rows[row][modifierIdColumn])),
+    modifierEdits: selection.modifierRows.map(row => {
+      const id = canonicalId(modifiers.rows[row][modifierIdColumn]);
+      const cell = xlsx.utils.encode_cell({ r: row, c: modifierNameColumn });
+      const change = changes.find(candidate =>
+        candidate.sheet === modifiers.name
+        && candidate.cell === cell
+        && candidate.field === String(modifiers.headers[modifierNameColumn]));
+      if (!change) throw new Error(`No se registro el cambio del modificador ${id} en ${cell}.`);
+      return { id, nameBefore: change.previousValue, nameAfter: change.newValue };
+    }),
     changes,
   };
 }
@@ -252,6 +263,7 @@ function selectRelatedRows(
   groupIdColumn: number,
   groupNameColumn: number,
   groupOrderColumn: number,
+  groupSubgroupsColumn: number,
   modifierItemColumn: number,
   modifierGroupColumn: number,
   modifierIdColumn: number,
@@ -349,7 +361,7 @@ function selectRelatedRows(
           }))
           .filter(subgroup => subgroup.id),
       });
-      const relation = selectEditableRelation(relations);
+      const relation = selectEditableRelation(relations, 2, groups.rows[groupRow][groupSubgroupsColumn]);
       if (!relation) continue;
 
       candidates.push({

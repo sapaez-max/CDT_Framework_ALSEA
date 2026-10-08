@@ -57,6 +57,7 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
   const groupNameColumn = requiredColumn(groups, ['Nombre Comercial']);
   const groupDescriptionColumn = requiredColumn(groups, ['Descripcion']);
   const groupOrderColumn = requiredColumn(groups, ['Orden', 'Posicion']);
+  const groupSubgroupsColumn = requiredColumn(groups, ['Subgrupos']);
   const modifierItemColumn = requiredColumn(modifiers, ['Item']);
   const modifierGroupColumn = requiredColumn(modifiers, ['Grupo Modificador']);
   const modifierIdColumn = requiredColumn(modifiers, ['Modificador']);
@@ -106,10 +107,16 @@ export function readCoreViewerExpectation(inputPath: string): CoreViewerTemplate
       }))
       .filter(subgroup => subgroup.id),
   });
-  const selectedRelation = selectEditableRelation(relations);
+  const selectedRelation = selectEditableRelation(
+    relations,
+    2,
+    groups.rows[editedGroupRow][groupSubgroupsColumn],
+  );
   if (!selectedRelation) {
     throw new Error(
-      `No se encontraron al menos dos modificadores editados de la misma relacion Item + Grupo + Subgrupo para el grupo ${groupId} en ${inputPath}.`,
+      `No se encontraron al menos dos modificadores editados en una relacion publicada `
+        + `(Item + Grupo + Subgrupo) para el grupo ${groupId} en ${inputPath}. `
+        + 'Vuelva a ejecutar CP2 con la seleccion de subgrupos publicada.',
     );
   }
 

@@ -244,8 +244,8 @@ export class CoreViewerPage extends BasePage {
       return {
         context: filters,
         product: `${expectation.itemId} - ${expectation.itemName}`,
-        expectedGroupName: expectation.groupName,
-        expectedGroupId: expectation.groupId,
+        expectedGroupName: expectation.resolvedGroupName,
+        expectedGroupId: expectation.resolvedGroupId,
         expectedTemplate: expectation.inputPath,
         previewVisible: false,
         jsonVisible: false,
@@ -269,15 +269,15 @@ export class CoreViewerPage extends BasePage {
     return {
       context: filters,
       product: `${expectation.itemId} - ${expectation.itemName}`,
-      expectedGroupName: expectation.groupName,
-      expectedGroupId: expectation.groupId,
+      expectedGroupName: expectation.resolvedGroupName,
+      expectedGroupId: expectation.resolvedGroupId,
       expectedTemplate: expectation.inputPath,
       previewVisible: true,
       jsonVisible,
       jsonText: jsonVisible ? jsonText : undefined,
       groupsFound,
-      expectedNameInTree: groupsFound.includes(expectation.groupName),
-      expectedIdInDom: previewText.includes(expectation.groupId) || jsonText.includes(expectation.groupId),
+      expectedNameInTree: groupsFound.includes(expectation.resolvedGroupName),
+      expectedIdInDom: previewText.includes(expectation.resolvedGroupId) || jsonText.includes(expectation.resolvedGroupId),
       treeHadCollapsedNodes: false,
       treeScroll: null,
       internalScrollContainers: [],
@@ -481,39 +481,65 @@ export class CoreViewerPage extends BasePage {
     expectation: CoreViewerTemplateExpectation,
   ): Promise<CoreViewerValidationRow[]> {
     const preview = this.productPreview();
-    const group = preview.getByText(containsTextPattern(expectation.groupName));
+    const visibleGroupName = expectation.resolvedGroupName;
+    await expect(
+      preview.getByText(exactTextPattern(visibleGroupName)).first(),
+      `Debe visualizarse el grupo publicado ${expectation.resolvedGroupId}: ${visibleGroupName}`,
+    ).toBeVisible();
 
-    if (await group.isVisible().catch(() => false)) {
+    for (const modifier of expectation.modifiers) {
       await expect(
-        group,
-        `Debe visualizarse el grupo modificador editado: ${expectation.groupName}`,
+        preview.getByText(containsTextPattern(modifier.name)).first(),
+        `Debe visualizarse el modificador editado ${modifier.id}: ${modifier.name} dentro de ${visibleGroupName}`,
       ).toBeVisible();
-      const actual = normalizeVisibleText(await group.textContent() ?? '');
-      return [comparisonRow(
-        'Grupo modificador',
-        expectation.groupId,
-        'Nombre comercial',
-        expectation.groupName,
-        actual,
-      )];
     }
 
-    const rows: CoreViewerValidationRow[] = [];
-    for (const modifier of expectation.modifiers) {
-      const locator = preview.getByText(containsTextPattern(modifier.name));
-      await expect(
-        locator,
-        `Debe visualizarse el modificador editado ${modifier.id}: ${modifier.name}`,
-      ).toBeVisible();
-      rows.push(comparisonRow(
+    const entities = await this.visibleTreeEntities(preview);
+    const normalizedGroupName = normalizeForComparison(visibleGroupName);
+    const groupIndexes = entities
+      .map((entity, index) => ({ entity, index }))
+      .filter(({ entity }) => entity.depth === 0 && normalizeForComparison(entity.title) === normalizedGroupName)
+      .map(({ index }) => index);
+    const expectedModifiers = expectation.modifiers.map(modifier => normalizeForComparison(modifier.name));
+    const groupMatches = groupIndexes.map(groupIndex => {
+      const nextGroupOffset = entities.slice(groupIndex + 1).findIndex(entity => entity.depth === 0);
+      const groupEnd = nextGroupOffset < 0 ? entities.length : groupIndex + 1 + nextGroupOffset;
+      const modifiers = entities.slice(groupIndex + 1, groupEnd)
+        .filter(entity => entity.depth > 0)
+        .map(entity => entity.title);
+      return { groupIndex, modifiers };
+    });
+    const groupMatch = groupMatches.find(({ modifiers }) =>
+      expectedModifiers.every(name => modifiers.some(title => modifierTitleMatches(title, name))));
+    expect(
+      groupMatch,
+      `Los modificadores editados deben pertenecer al grupo publicado ${expectation.resolvedGroupId}: ${visibleGroupName}. `
+        + `Grupos con ese nombre: ${JSON.stringify(groupMatches.map(group => group.modifiers))}`,
+    ).toBeDefined();
+
+    const actualEditedModifiers = groupMatch!.modifiers
+      .filter(title => expectedModifiers.some(name => modifierTitleMatches(title, name)));
+    expect(
+      actualEditedModifiers.map(title => expectedModifiers.find(name => modifierTitleMatches(title, name))),
+      `Los modificadores de ${visibleGroupName} deben mostrarse en el orden definido en la plantilla`,
+    ).toEqual(expectedModifiers);
+
+    return [
+      comparisonRow(
+        'Grupo modificador',
+        expectation.resolvedGroupId,
+        'Nombre visible',
+        visibleGroupName,
+        entities[groupMatch!.groupIndex].title,
+      ),
+      ...expectation.modifiers.map((modifier, index) => comparisonRow(
         'Modificador',
         modifier.id,
-        'Nombre comercial',
+        `Nombre y orden ${index + 1}`,
         modifier.name,
-        normalizeVisibleText(await locator.textContent() ?? ''),
-      ));
-    }
-    return rows;
+        actualEditedModifiers[index],
+      )),
+    ];
   }
 
   private async openJsonView(): Promise<string> {
@@ -745,6 +771,11 @@ function normalizeForComparison(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
+}
+
+function modifierTitleMatches(title: string, normalizedName: string): boolean {
+  const normalizedTitle = normalizeForComparison(title);
+  return normalizedTitle === normalizedName || normalizedTitle.startsWith(`${normalizedName} - $`);
 }
 
 function normalizeVisibleText(value: string): string {

@@ -134,8 +134,18 @@ export function resolveModifierGroupRelations(input: {
 export function selectEditableRelation(
   relations: ModifierGroupRelation[],
   minimumModifiers = 2,
+  publishedSubgroups?: unknown,
 ): ModifierGroupRelation | undefined {
-  return relations.find(relation => relation.modifiers.length >= minimumModifiers);
+  const allowedSubgroups = publishedSubgroups === undefined
+    ? undefined
+    : normalizeSubgroupIds(publishedSubgroups);
+  return relations.find(relation =>
+    relation.modifiers.length >= minimumModifiers
+    && (allowedSubgroups === undefined
+      || (allowedSubgroups.length > 0
+        ? relation.identity.subgroupId !== null
+          && allowedSubgroups.includes(relation.identity.subgroupId)
+        : relation.identity.subgroupId === null)));
 }
 
 export function normalizeSubgroupIds(value: unknown): string[] {
