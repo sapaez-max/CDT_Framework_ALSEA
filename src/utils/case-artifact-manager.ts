@@ -9,6 +9,7 @@ export type CaseExcelCopy = {
 export type ArtifactScope = {
   datasetId: string;
   runId?: string;
+  runGroup?: string;
 };
 
 const excelPattern = /\.xlsx?$/i;
@@ -17,6 +18,7 @@ export function caseDownloadDirectory(caseId: string, scope: ArtifactScope): str
   return path.resolve(
     'artifacts',
     'runs',
+    ...(scope.runGroup ? [safeSegment(scope.runGroup)] : []),
     safeSegment(scope.runId ?? process.env.ALSEA_RUN_ID ?? 'manual'),
     safeSegment(caseId),
     safeSegment(scope.datasetId),

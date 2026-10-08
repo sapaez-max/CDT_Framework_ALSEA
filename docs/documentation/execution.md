@@ -18,6 +18,21 @@
 
 `npm run test:regression` existe en `package.json`, pero todavía no hay pruebas con `@regression`. No debe considerarse una selección funcional disponible hasta definir su alcance.
 
+## Variantes negativas de CP2
+
+El proyecto `ordenamiento-edicion-negativos` ejecuta `CP2-N01` (falta la hoja `GrupoModificador`) y `CP2-N02` (no hay dos modificadores habilitados para el agregador). Usa una plantilla sintética válida como control y copias aisladas para cada variante. No consulta el portal ni Gmail y no se incluye en la cadena de `test:full`.
+
+Sus Excel se guardan bajo `artifacts/runs/negative-tests/<runId>/`, separados por `CP1`/`CP2` y por el dataset de control o negativo. Los artefactos de las corridas funcionales conservan sus rutas habituales en `artifacts/runs/<runId>/`.
+
+En PowerShell, puede ejecutarse sin una sesión autenticada:
+
+```powershell
+$env:AUTH_ENABLED='false'
+node node_modules/playwright/cli.js test --project=ordenamiento-edicion-negativos --workers=1
+```
+
+Un resultado `PASS` significa que el editor rechazó la copia inválida con el mensaje esperado. Cada variante adjunta el Excel válido, el Excel modificado, un resumen HTML tabular de los cambios y el diagnóstico obtenido. Estas pruebas validan el editor del framework; no demuestran cómo el portal rechaza una carga.
+
 ## Proyectos de Playwright
 
 Los escenarios están separados por etapa:

@@ -5,6 +5,7 @@ import { env } from './env';
 const scenarioPath = 'ordenamiento-gpo-mod[\\\\/]scenarios[\\\\/]';
 
 export const fileEditTestPattern = new RegExp(`${scenarioPath}02-edit-template\\.spec\\.ts`);
+export const negativeFileEditTestPattern = new RegExp(`${scenarioPath}02-edit-template-negative\\.spec\\.ts`);
 export const chainedDownloadTestPattern = new RegExp(`${scenarioPath}01-download-template\\.spec\\.ts`);
 export const chainedEditTestPattern = fileEditTestPattern;
 export const chainedFilterLoadTestPattern = new RegExp(`${scenarioPath}03-upload-filters\\.spec\\.ts`);

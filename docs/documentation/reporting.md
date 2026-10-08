@@ -46,6 +46,8 @@ Los Excel se muestran como `<descripción funcional> - <nombre-real.xls|xlsx>`. 
 
 Los casos que modifican datos adjuntan `Resumen comparativo de cambios en Excel`. Las validaciones del Visor y la actualización de menú adjuntan el JSON obtenido y comparaciones legibles cuando corresponda. S06 adjunta `Comparación de datos esperados y obtenidos en el JSON`, con una fila por entidad para comparar identificador, nombre y posición, además del orden completo de los modificadores. Esta comparación también determina el resultado del test: cualquier fila con `No coincide` provoca el fallo del caso.
 
+Las variantes `CP2-N01` y `CP2-N02` muestran en ese mismo resumen los cambios preparados para provocar el rechazo, junto con el archivo origen y el archivo resultado. El adjunto `Resultado de validación de plantilla` conserva el diagnóstico esperado y el obtenido. La variante pasa cuando ambos coinciden.
+
 ## Evidencias de Gmail
 
 La descarga inicial utiliza:

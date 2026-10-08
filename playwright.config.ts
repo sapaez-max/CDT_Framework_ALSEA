@@ -14,6 +14,7 @@ import {
   chainedPreserveOrderTestPattern,
   chainedMultipleGroupsTestPattern,
   getRoleProjectConfigs,
+  negativeFileEditTestPattern,
 } from './src/config/roles';
 
 export default defineConfig({
@@ -60,6 +61,10 @@ export default defineConfig({
     {
       name: 'ordenamiento-edicion',
       testMatch: chainedEditTestPattern,
+    },
+    {
+      name: 'ordenamiento-edicion-negativos',
+      testMatch: negativeFileEditTestPattern,
     },
     {
       name: 'ordenamiento-carga-filtros',

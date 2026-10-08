@@ -29,6 +29,11 @@ export type ModificationEvidenceInput = {
   category?: string;
   modifierGroups?: ModificationEntityRow[];
   modifiers?: ModificationEntityRow[];
+  structuralChanges?: Array<{
+    entity: string;
+    previousValue: string;
+    newValue: string;
+  }>;
 };
 
 type Column = {
@@ -110,6 +115,7 @@ export function buildModificationEvidenceHtml(input: ModificationEvidenceInput):
   ${entityTable('Item modificado', input.item ? [input.item] : [], itemColumns)}
   ${entityTable('Grupos modificadores', input.modifierGroups ?? [], groupColumns)}
   ${entityTable('Modificadores', input.modifiers ?? [], modifierColumns)}
+  ${structuralChangesTable(input.structuralChanges ?? [])}
 
   <h2>Archivos</h2>
   <table class="meta">
@@ -122,6 +128,23 @@ export function buildModificationEvidenceHtml(input: ModificationEvidenceInput):
   </table>
 </body>
 </html>`;
+}
+
+function structuralChangesTable(changes: NonNullable<ModificationEvidenceInput['structuralChanges']>): string {
+  if (changes.length === 0) return '';
+
+  const rows = changes.map(change => `
+    <tr>
+      <td>${escapeHtml(change.entity)}</td>
+      <td>${escapeHtml(change.previousValue)}</td>
+      <td class="changed">${escapeHtml(change.newValue)}</td>
+    </tr>`).join('');
+
+  return `<h2>Cambios para preparar el caso</h2>
+  <table>
+    <thead><tr><th>Entidad modificada</th><th>Valor anterior</th><th>Valor nuevo</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
 function entityTable(title: string, rows: ModificationEntityRow[], baseColumns: Column[]): string {

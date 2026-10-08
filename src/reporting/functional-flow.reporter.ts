@@ -26,6 +26,7 @@ const functionalAnnotationTypes = new Set([
   'Descripcion de menu',
   'Item seleccionado',
   'Categoria del item',
+  'Variante',
 ]);
 
 const flows: Readonly<Record<string, FlowStepDefinition[]>> = {
@@ -40,6 +41,11 @@ const flows: Readonly<Record<string, FlowStepDefinition[]>> = {
     step('Seleccionar item, grupo y modificadores relacionados', /Seleccionar item, grupo y modificadores relacionados/i),
     step('Modificar nombres de item, grupo y modificadores', /Modificar nombres de item, grupo y modificadores/i),
     step('Guardar y validar la plantilla editada', /Guardar y validar la plantilla editada/i),
+  ],
+  '02-edit-template-negative.spec.ts': [
+    step('Comprobar que la plantilla de control es editable', /Validar plantilla de control/i),
+    step('Preparar una copia con la condición inválida', /Preparar plantilla negativa/i),
+    step('Confirmar el rechazo esperado sin editar el archivo', /Validar rechazo esperado/i),
   ],
   '03-upload-filters.spec.ts': [
     step('Acceder al portal con la sesión autorizada', /Acceder al portal con la sesion autorizada/i),
