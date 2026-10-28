@@ -139,7 +139,7 @@ export class GmailClient {
     baselineIds: ReadonlySet<string>,
     expectation: TemplateEmailExpectation,
   ): Promise<TemplateEmailResult> {
-    return this.waitForCaseEmail(baselineIds, {
+    return this.waitForMatchingEmail(baselineIds, {
       caseId: expectation.caseId,
       subject: env.gmail.expectedSubject,
       bodyFields: [
@@ -150,38 +150,65 @@ export class GmailClient {
       ],
       requireExcelAttachment: true,
       artifactScope: expectation.artifactScope,
-    });
+    }, this.templateEmailQuery());
   }
 
   async waitForCaseEmail(
     baselineIds: ReadonlySet<string>,
     expectation: CaseEmailExpectation,
   ): Promise<TemplateEmailResult> {
+    return this.waitForMatchingEmail(baselineIds, expectation, `from:${env.gmail.expectedFrom}`);
+  }
+
+  private async waitForMatchingEmail(
+    baselineIds: ReadonlySet<string>,
+    expectation: CaseEmailExpectation,
+    query: string,
+  ): Promise<TemplateEmailResult> {
     const deadline = Date.now() + env.gmail.pollTimeoutMs;
     const mismatches: string[] = [];
+    const seenIds = new Set(baselineIds);
+    let quotaFailures = 0;
+    let lastQuotaError: unknown;
 
     while (Date.now() < deadline) {
-      const newMessageIds = (await this.findCaseMessageIds(20))
-        .filter((id) => !baselineIds.has(id));
+      try {
+        const newMessageIds = (await this.findMessageIds(query, 20))
+          .filter((id) => !seenIds.has(id));
 
-      for (const messageId of newMessageIds) {
-        const message = await this.gmail.users.messages.get({
-          userId: env.gmail.userId,
-          id: messageId,
-          format: 'full',
-        });
-        const result = await this.matchCaseEmail(message.data, expectation);
+        for (const messageId of newMessageIds) {
+          const message = await this.gmail.users.messages.get({
+            userId: env.gmail.userId,
+            id: messageId,
+            format: 'full',
+          });
+          const result = await this.matchCaseEmail(message.data, expectation);
 
-        if (result.status === 'matched') {
-          return result.email;
+          if (result.status === 'matched') {
+            return result.email;
+          }
+
+          seenIds.add(messageId);
+          mismatches.push(result.reason);
         }
 
-        mismatches.push(result.reason);
-      }
+        quotaFailures = 0;
+        lastQuotaError = undefined;
+        await wait(Math.min(env.gmail.pollIntervalMs, Math.max(deadline - Date.now(), 0)));
+      } catch (error) {
+        if (!isGmailQuotaError(error)) throw error;
 
-      await wait(Math.min(env.gmail.pollIntervalMs, Math.max(deadline - Date.now(), 0)));
+        lastQuotaError = error;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw error;
+
+        const backoffMs = Math.min(5_000 * 2 ** Math.min(quotaFailures, 3), 30_000, remaining);
+        quotaFailures += 1;
+        await wait(backoffMs);
+      }
     }
 
+    if (lastQuotaError) throw lastQuotaError;
     const detail = Array.from(new Set(mismatches)).slice(-5).join(' | ');
     throw new Error(
       `No se recibio el correo esperado para ${expectation.caseId} en ${Math.round(env.gmail.pollTimeoutMs / 60_000)} minutos.${detail ? ` Mensajes descartados: ${detail}` : ''}`,
@@ -493,4 +520,14 @@ function evidenceBody(value: string): string {
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+function isGmailQuotaError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const responseStatus = (error as Error & { response?: { status?: number } }).response?.status;
+  if (responseStatus === 429) return true;
+  if (responseStatus !== undefined && responseStatus !== 403) return false;
+
+  return /quota exceeded|rate.?limit exceeded|too many requests/i.test(error.message);
 }

@@ -70,7 +70,7 @@ export const env = {
     expectedFrom: process.env.GMAIL_EXPECTED_FROM ?? '',
     expectedSubject: process.env.GMAIL_EXPECTED_SUBJECT ?? '',
     pollTimeoutMs: numberFromEnv('GMAIL_POLL_TIMEOUT_MS', 300_000),
-    pollIntervalMs: numberFromEnv('GMAIL_POLL_INTERVAL_MS', 5_000),
+    pollIntervalMs: numberFromEnv('GMAIL_POLL_INTERVAL_MS', 15_000),
   },
 
   login: {

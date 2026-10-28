@@ -16,7 +16,7 @@ La automatización consulta el correo asociado al token mediante Google Gmail AP
 | `GMAIL_EXPECTED_FROM` | Remitente esperado |
 | `GMAIL_EXPECTED_SUBJECT` | Asunto esperado para la descarga |
 | `GMAIL_POLL_TIMEOUT_MS` | Espera máxima; cinco minutos por defecto |
-| `GMAIL_POLL_INTERVAL_MS` | Intervalo de consulta |
+| `GMAIL_POLL_INTERVAL_MS` | Intervalo de consulta; 15 segundos por defecto |
 
 Los archivos OAuth deben permanecer fuera del control de versiones y nunca se adjuntan al reporte.
 
@@ -27,6 +27,8 @@ CP1, CP13, CP25 y CP37:
 1. Capturan una línea base de mensajes coincidentes antes de solicitar la plantilla.
 2. Realizan la solicitud desde el portal.
 3. Consultan Gmail hasta encontrar un mensaje nuevo que no pertenezca a la línea base.
+   La búsqueda de plantillas es la misma en ambos pasos; cada mensaje candidato se lee una sola vez.
+   Si Gmail agota temporalmente la cuota, la consulta se reintenta con espera creciente dentro del tiempo máximo configurado.
 4. Validan remitente, asunto, país, marca, sucursal y tipo de menú.
 5. No validan agregador porque el formulario de descarga no lo selecciona.
 6. Localizan un adjunto `.xls` o `.xlsx`.
